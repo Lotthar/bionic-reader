@@ -1,4 +1,5 @@
 import 'package:bionic_reader/services/text_pagination_service.dart';
+import 'package:bionic_reader/widgets/pagination_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_pdf_text/flutter_pdf_text.dart';
@@ -100,7 +101,7 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> {
     });
   }
 
-  // --- UI Navigation ---
+  // Existing state methods, now acting as callbacks:
   void _goToPreviousPage() {
     setState(() {
       if (_currentPageIndex > 0) {
@@ -117,34 +118,16 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> {
     });
   }
 
-  // --- UI BUILDERS (SRP Adherence) ---
-
-  /// Builds the navigation controls shown in the AppBar.
+// How you would use it in the AppBar:
   List<Widget>? _buildPaginationActions() {
-    if (_pages.isEmpty || _isLoading) {
-      return null;
-    }
-
-    return [
-      // Previous Page Button
-      IconButton(
-        icon: const Icon(Icons.arrow_back_ios),
-        onPressed: _currentPageIndex > 0 ? _goToPreviousPage : null,
-      ),
-      // Page Counter
-      Center(
-        child: Text(
-          'Page ${_currentPageIndex + 1} of ${_pages.length}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
-      // Next Page Button
-      IconButton(
-        icon: const Icon(Icons.arrow_forward_ios),
-        onPressed: _currentPageIndex < _pages.length - 1 ? _goToNextPage : null,
-      ),
-      const SizedBox(width: 8.0),
-    ];
+    final actionsHelper = PaginationActions(
+      _pages,
+      _isLoading,
+      _currentPageIndex,
+      onPreviousPage: _goToPreviousPage,
+      onNextPage: _goToNextPage,
+    );
+    return actionsHelper.buildPaginationActions();
   }
 
   /// Builds the main reading area, applying book-style padding and constraints.

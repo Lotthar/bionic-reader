@@ -19,7 +19,7 @@ class BionicReaderApp extends StatelessWidget {
         // Apply Inter font across the app (requires font configuration in pubspec)
         fontFamily: 'Inter',
       ),
-      home: const BionicReaderHomeScreen(title: 'Bionic Document Reader'),
+      home: const BionicReaderHomeScreen(title: 'Bionic Reader'),
     );
   }
 }
