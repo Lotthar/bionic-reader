@@ -1,9 +1,8 @@
+import 'package:bionic_reader/services/bionic_text_converter_service.dart';
+import 'package:bionic_reader/services/document_loader_service.dart';
 import 'package:bionic_reader/services/text_pagination_service.dart';
 import 'package:bionic_reader/widgets/pagination_actions.dart';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter_pdf_text/flutter_pdf_text.dart';
-import 'dart:io';
 
 class BionicReaderHomeScreen extends StatefulWidget {
   final String title;
@@ -16,6 +15,7 @@ class BionicReaderHomeScreen extends StatefulWidget {
 class _BionicReaderScreenState extends State<BionicReaderHomeScreen> {
   // --- State Variables ---
   List<String> _pages = []; // List to hold paginated text content
+  final Map<int, List<TextSpan>> _bionicPagesCache = {};
   int _currentPageIndex = 0; // 0-based index for the current page
   bool _isLoading = false;
   String _statusMessage = 'Tap to select a document';
@@ -27,75 +27,109 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> {
   // Standard max width for comfortable reading on large screens
   static const double _maxContentWidth = 700.0;
 
-  // --- Core Logic: Setup Pagination (Delegates to Service) ---
-  /// Uses the TextPaginationService to calculate the page breaks based on
-  /// current screen constraints and text style.
-  void _setPages(String fullText, BoxConstraints constraints) {
-    // Define the text style used in the body content
-    final TextStyle textStyle = Theme.of(context).textTheme.bodyLarge!.copyWith(
-      fontSize: 18.0,
-      height: 1.5,
+  // NEW: Utility Styles for Bionic Conversion
+  TextStyle get _baseTextStyle => Theme.of(context).textTheme.bodyLarge!.copyWith(
+    fontSize: 18.0,
+    height: 1.5,
+    color: Colors.black, // Default color for unbolded text
+  );
+
+  TextStyle get _boldTextStyle => _baseTextStyle.copyWith(
+    fontWeight: FontWeight.w900,
+    color: Theme.of(context).colorScheme.primary, // Highlight color
+  );
+
+  // NEW: Conversion and Async Logic
+  List<TextSpan> _convertPageToBionic(String pageText) {
+    final converter = BionicTextConverter(
+      baseStyle: _baseTextStyle,
+      boldStyle: _boldTextStyle,
+      fixateLength: 3,
     );
-
-    // Calculate the total vertical padding consumed by the UI
-    final double totalVerticalPadding = _verticalTopPadding + _verticalBottomPadding;
-
-    // Initialize the external service with layout parameters
-    final service = TextPaginationService(
-      horizontalPadding: _horizontalPadding,
-      // We pass half the total vertical padding, assuming the service internally
-      // multiplies the verticalPadding argument by 2 when calculating available height.
-      verticalPadding: totalVerticalPadding / 2,
-      textStyle: textStyle,
-      appBarHeight: kToolbarHeight, // Material constant for standard AppBar height
-    );
-
-    // Get the page list from the service
-    final newPages = service.paginateTextToFit(fullText, constraints);
-
-    setState(() {
-      _pages = newPages;
-      _currentPageIndex = 0;
-      _statusMessage = 'Document loaded: ${_pages.length} pages';
-    });
+    return converter.convert(pageText);
   }
 
-  // --- File Picker and Text Extraction ---
+  void _startAsyncConversion() async {
+    // Start from page 1, as page 0 is converted synchronously in _setPages
+    for (int i = 1; i < _pages.length; i++) {
+      // Use microtask to ensure this runs off the main event loop queue
+      await Future.microtask(() {
+        if (!_bionicPagesCache.containsKey(i)) {
+          final bionicSpans = _convertPageToBionic(_pages[i]);
+          _bionicPagesCache[i] = bionicSpans;
+
+          // Only trigger a rebuild if the newly converted page is the one the user is viewing
+          if (_currentPageIndex == i && mounted) {
+            setState(() {});
+          }
+        }
+      });
+    }
+  }
+
+  void _setPages(String fullText, BoxConstraints constraints) {
+    // Use _baseTextStyle for pagination service measurement
+    final TextStyle paginationStyle = _baseTextStyle;
+    final double totalVerticalPadding = _verticalTopPadding + _verticalBottomPadding;
+
+    final service = TextPaginationService(
+      horizontalPadding: _horizontalPadding,
+      verticalPadding: totalVerticalPadding / 2,
+      textStyle: paginationStyle, // Use the base style for accurate measurement
+      appBarHeight: kToolbarHeight,
+    );
+
+    final newPlainPages = service.paginateTextToFit(fullText, constraints);
+
+    // 1. Update the plain page list and clear the cache
+    _bionicPagesCache.clear();
+    _pages = newPlainPages;
+
+    if (_pages.isEmpty) {
+      _pages = ['Document is empty or could not be processed.'];
+    }
+
+    // 2. Convert the first page (index 0) synchronously for immediate display
+    _bionicPagesCache[0] = _convertPageToBionic(_pages[0]);
+
+    setState(() {
+      _currentPageIndex = 0;
+      _statusMessage = 'Document loaded: ${_pages.length} pages. Converting...';
+      // Note: _isLoading is set to false in _pickAndConvertFile
+    });
+
+    // 3. Start the async background conversion for the rest
+    if (_pages.length > 1) {
+      _startAsyncConversion();
+    }
+  }
+
   void _pickAndConvertFile(BoxConstraints constraints) async {
     setState(() {
       _isLoading = true;
-      _pages = [];
+      _pages = []; // Assuming you use _pages now, not _pages
       _statusMessage = 'Loading document...';
     });
 
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'], // Only allow PDF files for now
-    );
+    try {
+      final loader = DocumentLoaderService();
+      String fullText = await loader.loadPdfText();
 
-    if (result != null && result.files.single.path != null) {
-      File file = File(result.files.single.path!);
+      _setPages(fullText, constraints);
 
-      try {
-        // Use the pdf_text package to extract content
-        PDFDoc pdfDoc = await PDFDoc.fromFile(file);
-        String fullText = await pdfDoc.text;
-
-        // Pass the extracted text and screen constraints to the paginator
-        _setPages(fullText, constraints);
-
-      } catch (e) {
-        setState(() {
-          _statusMessage = 'Error loading PDF: $e';
-          _pages = [_statusMessage];
-        });
-      }
-    } else {
+    } on FileLoaderException catch (e) {
       setState(() {
-        _statusMessage = 'File selection canceled.';
+        _statusMessage = 'Load Failed: ${e.message}';
+        _pages = [e.message]; // Display error on page
+        _bionicPagesCache.clear();
+      });
+    } catch (e) {
+      setState(() {
+        _statusMessage = 'An unexpected error occurred: ${e.toString()}';
+        _pages = [_statusMessage];
+        _bionicPagesCache.clear();
       });
     }
-
     setState(() {
       _isLoading = false;
     });
@@ -132,32 +166,55 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> {
 
   /// Builds the main reading area, applying book-style padding and constraints.
   Widget _buildDocumentContent() {
-    final String currentText = _pages.isNotEmpty
-        ? _pages[_currentPageIndex]
-        : _statusMessage;
+    // 1. Check the cache for the converted bionic page
+    final List<TextSpan>? bionicSpans = _bionicPagesCache[_currentPageIndex];
 
-    // Use SingleChildScrollView to prevent overflow issues on small screens,
-    // although dynamic pagination should prevent vertical scroll.
+    // 2. If the current page hasn't been converted yet (loading async), show a spinner
+    if (_pages.isNotEmpty && bionicSpans == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text('Converting page ${_currentPageIndex + 1}...'),
+          ],
+        ),
+      );
+    }
+
+    // Fallback for initial state or error state if cache is empty
+    if (_pages.isEmpty || bionicSpans == null) {
+      return Center(
+        child: Text(
+          _statusMessage,
+          textAlign: TextAlign.center,
+          style: _baseTextStyle,
+        ),
+      );
+    }
+
+    // 3. Use RichText to display the converted TextSpans
     return SingleChildScrollView(
       child: Padding(
         padding: EdgeInsets.fromLTRB(
           _horizontalPadding,
           _verticalTopPadding,
           _horizontalPadding,
-          _verticalBottomPadding, // Applied the increased bottom padding here
+          _verticalBottomPadding,
         ),
         child: Container(
-          // Constrain text width for better readability (book format)
           constraints: const BoxConstraints(
             maxWidth: _maxContentWidth,
           ),
           alignment: Alignment.topLeft,
-          child: Text(
-            currentText,
-            textAlign: TextAlign.justify, // Set text alignment to justify
-            style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-              fontSize: 18.0,
-              height: 1.5,
+          // NEW: Use RichText to display the list of TextSpan
+          child: RichText(
+            textAlign: TextAlign.justify,
+            text: TextSpan(
+              // The base style is necessary for general font properties (line height, etc.)
+              style: _baseTextStyle,
+              children: bionicSpans, // Pass the converted list of spans
             ),
           ),
         ),
