@@ -45,5 +45,14 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>We need access to your photo library to select files for conversion.</string>
+    <key>NSApplescriptEnabled</key>
+    <true/>
 </dict>
 </plist>
