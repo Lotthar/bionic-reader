@@ -16,72 +16,59 @@ class BionicTextConverter {
   /// Converts the input text string into a list of TextSpan widgets,
   /// bolding the first [fixateLength] characters of meaningful words.
   List<TextSpan> convert(String plainText) {
-    if (plainText.isEmpty) {
-      return [TextSpan(text: '', style: baseStyle)];
-    }
+    if (plainText.isEmpty) return [spanWithText('')];
 
     final List<TextSpan> spans = [];
+    var (wordParts, wordBoundary) = separateWordPartsAndBoundaryFrom(plainText);
+
+    for (String part in wordParts) {
+      if (part.trim().isEmpty || wordBoundary.hasMatch(part)) {
+        spans.add(spanWithText(part));
+        continue;
+      }
+      // If it is a word apply bionic logic
+      final (:length, :boldLength) = getRegularAndBoldLengthFor(part);
+      // 1. Bold part
+      spans.add(spanWithText(part.substring(0, boldLength), boldStyle));
+      // 2. Regular part
+      if (length > boldLength) {
+        spans.add(spanWithText(part.substring(boldLength)));
+      }
+    }
+    return spans;
+  }
+
+  (List<String>, RegExp) separateWordPartsAndBoundaryFrom(String text) {
     // Regular expression to identify delimiters (spaces and common punctuation)
     final RegExp wordBoundary = RegExp(r'(\s+|[.,!?;:\-–\—()"\[\]])');
-
-    // --- FIX: Manual accumulation of parts to ensure 'parts' is an iterable List<String> ---
-    final List<String> parts = [];
+    var parts = <String>[];
     int current = 0;
-
-    for (final match in wordBoundary.allMatches(plainText)) {
+    for (final match in wordBoundary.allMatches(text)) {
       // 1. Add the non-match part (the word)
-      final nonMatch = plainText.substring(current, match.start);
+      final nonMatch = text.substring(current, match.start);
       if (nonMatch.isNotEmpty) {
         parts.add(nonMatch);
       }
-
       // 2. Add the match part (the delimiter/space)
       parts.add(match.group(0)!);
-
       current = match.end;
     }
-
     // 3. Add any remaining text after the last match
-    if (current < plainText.length) {
-      parts.add(plainText.substring(current));
+    if (current < text.length) {
+      parts.add(text.substring(current));
     }
-    // ------------------------------------------------------------------------------------
+    return (parts, wordBoundary);
+  }
 
-    for (String part in parts) {
-      // Check if the part is only whitespace or delimiter
-      if (part.trim().isEmpty) {
-        spans.add(TextSpan(text: part, style: baseStyle));
-        continue;
-      }
-
-      // We rely on the `parts` list structure; if it's a word, apply bionic logic
-      if (!wordBoundary.hasMatch(part)) {
-        final int length = part.length;
-        final int boldLen = length > fixateLength ? fixateLength : length;
-
-        // 1. Bold part
-        spans.add(
-          TextSpan(
-            text: part.substring(0, boldLen),
-            style: boldStyle,
-          ),
-        );
-
-        // 2. Regular part
-        if (length > boldLen) {
-          spans.add(
-            TextSpan(
-              text: part.substring(boldLen),
-              style: baseStyle,
-            ),
-          );
-        }
-      } else {
-        // Fallback for any missed delimiters that weren't captured explicitly
-        spans.add(TextSpan(text: part, style: baseStyle));
-      }
-    }
-
-    return spans;
+  ({int length, int boldLength}) getRegularAndBoldLengthFor(String wordPart) {
+    int len = wordPart.length;
+    return (length: wordPart.length, boldLength: len > fixateLength ? fixateLength : len);
+  }
+  
+  TextSpan spanWithText(String text, [TextStyle? style]) {
+    return TextSpan(
+      text: text,
+      style: style ?? baseStyle
+    );
   }
 }
