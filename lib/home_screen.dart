@@ -132,33 +132,8 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
     _pages.clear();
     _bionicPagesCache.clear();
     final streamOfPages = paginationService.paginateTextToFit(fullText, constraints);
-    bool isFirstPage = true;
+    await _convertIncomingPaginatedText(streamOfPages);
 
-    await for (final pageText in streamOfPages) {
-      if (!mounted) return;
-
-      _pages.add(pageText);
-      final newPageIndex = _pages.length - 1;
-
-      if (isFirstPage) {
-        // For the first page, convert it synchronously and update the UI
-        _bionicPagesCache[0] = _convertPageToBionic(_pages[0]);
-        setState(() {
-          _currentPageIndex = 0;
-          _isLoading = false; // We have content to show, so stop loading indicator
-          _statusMessage = 'Page 1 loaded. More pages loading...';
-        });
-        isFirstPage = false;
-      } else {
-        // Update page count in UI for subsequent pages
-        setState(() {
-          _statusMessage = 'Document loaded: ${_pages.length} pages. Converting...';
-        });
-      }
-      if (newPageIndex > 0) {
-        _convertPageInBackground(newPageIndex);
-      }
-    }
 
     // After the stream is done, update the status
     if (mounted) {
@@ -168,7 +143,32 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
     }
   }
 
-  List<TextSpan> _convertPageToBionic(String pageText) {
+  Future<void> _convertIncomingPaginatedText(Stream<String> incomingPages) async {
+    bool isFirstPage = true;
+    await for (final pageText in incomingPages) {
+      if (!mounted) return;
+
+      _pages.add(pageText);
+      final newPageIndex = _pages.length - 1;
+      if (isFirstPage) {
+        // For the first page, convert it synchronously and update the UI
+        _bionicPagesCache[0] = _convertPageToBionicText(_pages[0]);
+        setState(() {
+          _currentPageIndex = 0;
+          _isLoading = false; // We have content to show, so stop loading indicator
+          _statusMessage = 'Page 1 loaded. More pages loading...';
+        });
+        isFirstPage = false;
+      } else {
+        setState(() {
+          _statusMessage = 'Document loaded: ${_pages.length} pages. Converting...';
+        });
+      }
+      if (newPageIndex > 0) _convertPageInBackground(newPageIndex);
+    }
+  }
+
+  List<TextSpan> _convertPageToBionicText(String pageText) {
     final converter = BionicTextConverter(
       baseStyle: baseTextStyle,
       boldStyle: boldTextStyle,
@@ -180,7 +180,7 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
   void _convertPageInBackground(int pageIndex) async {
     await Future.microtask(() {
       if (!mounted || _bionicPagesCache.containsKey(pageIndex)) return;
-      final bionicSpans = _convertPageToBionic(_pages[pageIndex]);
+      final bionicSpans = _convertPageToBionicText(_pages[pageIndex]);
       _bionicPagesCache[pageIndex] = bionicSpans;
 
       if (_currentPageIndex == pageIndex) {
