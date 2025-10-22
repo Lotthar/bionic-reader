@@ -1,7 +1,7 @@
 
 import 'package:flutter/material.dart';
 
-import '../bionic_reader_screen.dart';
+import '../home_screen.dart';
 
 mixin BionicReaderScreenStyles on State<BionicReaderHomeScreen> {
   // --- Configuration for Book Format ---
@@ -16,6 +16,8 @@ mixin BionicReaderScreenStyles on State<BionicReaderHomeScreen> {
       verticalTopPadding,
       horizontalPadding,
       verticalBottomPadding);
+
+  double get totalVerticalPadding => verticalTopPadding + verticalBottomPadding;
 
   // NEW: Utility Styles for Bionic Conversion
   TextStyle get baseTextStyle => Theme.of(context).textTheme.bodyLarge!.copyWith(

@@ -17,9 +17,7 @@ class PaginationActions {
       );
 
   List<Widget>? buildPaginationActions() {
-    if (pages.isEmpty || isLoading) {
-      return null;
-    }
+    if (pages.isEmpty || isLoading) return null;
 
     return [
       // Previous Page Button

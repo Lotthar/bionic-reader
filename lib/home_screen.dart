@@ -1,6 +1,6 @@
 import 'package:bionic_reader/mixins/reader_screen_styles.dart';
-import 'package:bionic_reader/services/bionic_text_converter_service.dart';
 import 'package:bionic_reader/services/document_loader_service.dart';
+import 'package:bionic_reader/services/text_converter_service.dart';
 import 'package:bionic_reader/services/text_pagination_service.dart';
 import 'package:bionic_reader/widgets/pagination_actions.dart';
 import 'package:flutter/material.dart';
@@ -20,16 +20,6 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
   int _currentPageIndex = 0; // 0-based index for the current page
   List<String> _pages = []; // List to hold paginated text content
   final Map<int, List<TextSpan>> _bionicPagesCache = {};
-
-  // NEW: Conversion and Async Logic
-  List<TextSpan> _convertPageToBionic(String pageText) {
-    final converter = BionicTextConverter(
-      baseStyle: baseTextStyle,
-      boldStyle: boldTextStyle,
-      fixateLength: 3,
-    );
-    return converter.convert(pageText);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,15 +71,22 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
     );
   }
 
-
   // How you would use it in the AppBar:
   List<Widget>? _buildPaginationActions() {
     final actionsHelper = PaginationActions(
       _pages,
       _isLoading,
       _currentPageIndex,
-      onPreviousPage: _goToPreviousPage,
-      onNextPage: _goToNextPage,
+      onPreviousPage: () => setState(() {
+        if (_currentPageIndex > 0) {
+          _currentPageIndex--;
+        }
+      }),
+      onNextPage: () => setState(() {
+        if (_currentPageIndex < _pages.length - 1) {
+          _currentPageIndex++;
+        }
+      }),
     );
     return actionsHelper.buildPaginationActions();
   }
@@ -127,18 +124,13 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
   }
 
   void _setPages(String fullText, BoxConstraints constraints) {
-    // Use _baseTextStyle for pagination service measurement
-    final TextStyle paginationStyle = baseTextStyle;
-    final double totalVerticalPadding = verticalTopPadding + verticalBottomPadding;
-
-    final service = TextPaginationService(
+    final paginationService = TextPaginationService(
       horizontalPadding: horizontalPadding,
       verticalPadding: totalVerticalPadding / 2,
-      textStyle: paginationStyle, // Use the base style for accurate measurement
+      textStyle: baseTextStyle, // Use the base style for accurate measurement
       appBarHeight: kToolbarHeight,
     );
-
-    final newPlainPages = service.paginateTextToFit(fullText, constraints);
+    final newPlainPages = paginationService.paginateTextToFit(fullText, constraints);
     // 1. Update the plain page list and clear the cache
     _bionicPagesCache.clear();
     _pages = newPlainPages;
@@ -156,19 +148,27 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
     if (_pages.length > 1) _startAsyncConversion();
   }
 
+  List<TextSpan> _convertPageToBionic(String pageText) {
+    final converter = BionicTextConverter(
+      baseStyle: baseTextStyle,
+      boldStyle: boldTextStyle,
+      fixateLength: 3,
+    );
+    return converter.convert(pageText);
+  }
+
   void _startAsyncConversion() async {
     // Start from page 1, as page 0 is converted synchronously in _setPages
     for (int i = 1; i < _pages.length; i++) {
       // Use microtask to ensure this runs off the main event loop queue
       await Future.microtask(() {
-        if (!_bionicPagesCache.containsKey(i)) {
-          final bionicSpans = _convertPageToBionic(_pages[i]);
-          _bionicPagesCache[i] = bionicSpans;
+        if (_bionicPagesCache.containsKey(i)) return;
+        final bionicSpans = _convertPageToBionic(_pages[i]);
+        _bionicPagesCache[i] = bionicSpans;
 
-          // Only trigger a rebuild if the newly converted page is the one the user is viewing
-          if (_currentPageIndex == i && mounted) {
-            setState(() {});
-          }
+        // Only trigger a rebuild if the newly converted page is the one the user is viewing
+        if (_currentPageIndex == i && mounted) {
+          setState(() {});
         }
       });
     }
@@ -195,23 +195,6 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
         style: baseTextStyle,
       ),
     );
-  }
-
-  // Existing state methods, now acting as callbacks:
-  void _goToPreviousPage() {
-    setState(() {
-      if (_currentPageIndex > 0) {
-        _currentPageIndex--;
-      }
-    });
-  }
-
-  void _goToNextPage() {
-    setState(() {
-      if (_currentPageIndex < _pages.length - 1) {
-        _currentPageIndex++;
-      }
-    });
   }
 
   void _handleFileLoaderException(FileLoaderException e) {
