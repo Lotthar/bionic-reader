@@ -15,9 +15,10 @@ class TextPaginationService {
     required this.appBarHeight,
   });
 
-  List<String> paginateTextToFit(String fullText, BoxConstraints constraints) {
+  Stream<String> paginateTextToFit(String fullText, BoxConstraints constraints) async* {
     if (fullText.isEmpty) {
-      return ['Document is empty.'];
+      yield 'Document is empty.';
+      return;
     }
 
     final double contentWidth = constraints.maxWidth - (horizontalPadding * 2);
@@ -33,14 +34,20 @@ class TextPaginationService {
     final int maxLines = (contentHeight / lineMeasure.height).floor();
 
     if (maxLines <= 1) {
-      return [fullText];
+      yield fullText;
+      return;
     }
+
+    bool isFirstPage = true;
+
 
     // --- Dynamic Paging Loop ---
     final List<String> pages = [];
     String remainingText = fullText.trim();
 
     while (remainingText.isNotEmpty) {
+      await Future.delayed(Duration.zero);
+
       final TextPainter textPainter = TextPainter(
         text: TextSpan(text: remainingText, style: textStyle),
         textDirection: TextDirection.ltr,
@@ -57,6 +64,13 @@ class TextPaginationService {
         endPosition = remainingText.length;
       }
 
+      // If the entire text fits on the first page
+      if (isFirstPage && endPosition >= remainingText.length) {
+        yield remainingText;
+        return;
+      }
+      isFirstPage = false;
+
       // Find the last word boundary before the cutoff point for clean segmentation
       String pageContent = remainingText.substring(0, endPosition);
       int lastSpaceIndex = pageContent.lastIndexOf(' ');
@@ -70,11 +84,8 @@ class TextPaginationService {
         endPosition = pageContent.length;
       }
 
-      // Add the page and update the remaining text
-      pages.add(pageContent.trim());
+      yield pageContent.trim();
       remainingText = remainingText.substring(endPosition).trim();
     }
-
-    return pages.isEmpty ? [fullText.trim()] : pages;
   }
 }

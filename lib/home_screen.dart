@@ -106,46 +106,66 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
   void _pickAndConvertFile(BoxConstraints constraints) async {
     setState(() {
       _isLoading = true;
-      _pages = []; // Assuming you use _pages now, not _pages
+      _pages = [];
+      _bionicPagesCache.clear();
       _statusMessage = 'Loading document...';
     });
+
     try {
       final loader = DocumentLoaderService();
       String fullText = await loader.loadPdfText();
-      _setPages(fullText, constraints);
+      await _setPagesFromStream(fullText, constraints);
     } on FileLoaderException catch (e) {
       _handleFileLoaderException(e);
     } catch (e) {
       _handlePickAndConvertFileException(e);
     }
-    setState(() {
-      _isLoading = false;
-    });
   }
 
-  void _setPages(String fullText, BoxConstraints constraints) {
+  Future<void> _setPagesFromStream(String fullText, BoxConstraints constraints) async {
     final paginationService = TextPaginationService(
       horizontalPadding: horizontalPadding,
       verticalPadding: totalVerticalPadding / 2,
-      textStyle: baseTextStyle, // Use the base style for accurate measurement
+      textStyle: baseTextStyle,
       appBarHeight: kToolbarHeight,
     );
-    final newPlainPages = paginationService.paginateTextToFit(fullText, constraints);
-    // 1. Update the plain page list and clear the cache
+    _pages.clear();
     _bionicPagesCache.clear();
-    _pages = newPlainPages;
+    final streamOfPages = paginationService.paginateTextToFit(fullText, constraints);
+    bool isFirstPage = true;
 
-    if (_pages.isEmpty) _pages = ['Document is empty or could not be processed.'];
-    // 2. Convert the first page (index 0) synchronously for immediate display
-    _bionicPagesCache[0] = _convertPageToBionic(_pages[0]);
-    setState(() {
-      _currentPageIndex = 0;
-      _statusMessage = 'Document loaded: ${_pages.length} pages. Converting...';
-      // Note: _isLoading is set to false in _pickAndConvertFile
-    });
+    await for (final pageText in streamOfPages) {
+      if (!mounted) return;
 
-    // 3. Start the async background conversion for the rest
-    if (_pages.length > 1) _startAsyncConversion();
+      _pages.add(pageText);
+      final newPageIndex = _pages.length - 1;
+
+      if (isFirstPage) {
+        // For the first page, convert it synchronously and update the UI
+        _bionicPagesCache[0] = _convertPageToBionic(_pages[0]);
+        setState(() {
+          _currentPageIndex = 0;
+          _isLoading = false; // We have content to show, so stop loading indicator
+          _statusMessage = 'Page 1 loaded. More pages loading...';
+        });
+        isFirstPage = false;
+      } else {
+        // Update page count in UI for subsequent pages
+        setState(() {
+          _statusMessage = 'Document loaded: ${_pages.length} pages. Converting...';
+        });
+      }
+      if (newPageIndex > 0) {
+        _convertPageInBackground(newPageIndex);
+      }
+    }
+
+    // After the stream is done, update the status
+    if (mounted) {
+      setState(() {
+        _statusMessage = 'Document loaded: ${_pages.length} pages.';
+      });
+    }
   }
 
   List<TextSpan> _convertPageToBionic(String pageText) {
@@ -157,21 +177,16 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
     return converter.convert(pageText);
   }
 
-  void _startAsyncConversion() async {
-    // Start from page 1, as page 0 is converted synchronously in _setPages
-    for (int i = 1; i < _pages.length; i++) {
-      // Use microtask to ensure this runs off the main event loop queue
-      await Future.microtask(() {
-        if (_bionicPagesCache.containsKey(i)) return;
-        final bionicSpans = _convertPageToBionic(_pages[i]);
-        _bionicPagesCache[i] = bionicSpans;
+  void _convertPageInBackground(int pageIndex) async {
+    await Future.microtask(() {
+      if (!mounted || _bionicPagesCache.containsKey(pageIndex)) return;
+      final bionicSpans = _convertPageToBionic(_pages[pageIndex]);
+      _bionicPagesCache[pageIndex] = bionicSpans;
 
-        // Only trigger a rebuild if the newly converted page is the one the user is viewing
-        if (_currentPageIndex == i && mounted) {
-          setState(() {});
-        }
-      });
-    }
+      if (_currentPageIndex == pageIndex) {
+        setState(() {});
+      }
+    });
   }
 
   Widget _fileConvertingSpinner() {
@@ -202,6 +217,7 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
       _statusMessage = 'Load Failed: ${e.message}';
       _pages = [e.message]; // Display error on page
       _bionicPagesCache.clear();
+      _isLoading = false;
     });
   }
 
@@ -210,6 +226,7 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
       _statusMessage = 'An unexpected error occurred: ${e.toString()}';
       _pages = [_statusMessage];
       _bionicPagesCache.clear();
+      _isLoading = false;
     });
   }
 }
