@@ -26,11 +26,8 @@ class BionicTextConverter {
         spans.add(spanWithText(part));
         continue;
       }
-      // If it is a word apply bionic logic
       final (:length, :boldLength) = getRegularAndBoldLengthFor(part);
-      // 1. Bold part
       spans.add(spanWithText(part.substring(0, boldLength), boldStyle));
-      // 2. Regular part
       if (length > boldLength) {
         spans.add(spanWithText(part.substring(boldLength)));
       }
