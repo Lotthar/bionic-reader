@@ -59,7 +59,7 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
           alignment: Alignment.topLeft,
           // NEW: Use RichText to display the list of TextSpan
           child: RichText(
-            textAlign: TextAlign.justify,
+            textAlign: TextAlign.start,
             text: TextSpan(
               // The base style is necessary for general font properties (line height, etc.)
               style: baseTextStyle,
@@ -128,10 +128,11 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
       verticalPadding: totalVerticalPadding / 2,
       textStyle: baseTextStyle,
       appBarHeight: kToolbarHeight,
+      boxConstraints: constraints
     );
     _pages.clear();
     _bionicPagesCache.clear();
-    final streamOfPages = paginationService.paginateTextToFit(fullText, constraints);
+    final streamOfPages = paginationService.paginateText(fullText);
     await _convertIncomingPaginatedText(streamOfPages);
 
 
