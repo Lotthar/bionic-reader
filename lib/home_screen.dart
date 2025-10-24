@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:bionic_reader/mixins/reader_screen_styles.dart';
 import 'package:bionic_reader/services/document_loader_service.dart';
 import 'package:bionic_reader/services/text_converter_service.dart';
@@ -16,6 +18,7 @@ class BionicReaderHomeScreen extends StatefulWidget {
 class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with BionicReaderScreenStyles{
   // --- State Variables ---
   bool _isLoading = false;
+  bool _allPagesConverted = false;
   String _statusMessage = 'Tap to select a document';
   int _currentPageIndex = 0; // 0-based index for the current page
   List<String> _pages = []; // List to hold paginated text content
@@ -30,7 +33,9 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
           appBar: AppBar(
             backgroundColor: Theme.of(context).colorScheme.inversePrimary,
             title: Text(widget.title),
-            actions: _buildPaginationActions(),
+            actions: !_isLoading && _pages.isNotEmpty && !_allPagesConverted ?
+                BionicReaderScreenStyles.pagesNavigationPlaceholder :
+                _buildPaginationActions(),
           ),
           body: Center(
             child: _isLoading
@@ -132,23 +137,20 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
     );
     _pages.clear();
     _bionicPagesCache.clear();
+
     final streamOfPages = paginationService.paginateText(fullText);
     await _convertIncomingPaginatedText(streamOfPages);
 
-
-    // After the stream is done, update the status
-    if (mounted) {
-      setState(() {
-        _statusMessage = 'Document loaded: ${_pages.length} pages.';
-      });
-    }
+    log('All pages are converted');
+    setState(() {
+      _statusMessage = 'Document loaded: ${_pages.length} pages.';
+      _allPagesConverted = true;
+    });
   }
 
   Future<void> _convertIncomingPaginatedText(Stream<String> incomingPages) async {
     bool isFirstPage = true;
     await for (final pageText in incomingPages) {
-      if (!mounted) return;
-
       _pages.add(pageText);
       final newPageIndex = _pages.length - 1;
       if (isFirstPage) {
@@ -159,14 +161,19 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
           _isLoading = false; // We have content to show, so stop loading indicator
           _statusMessage = 'Page 1 loaded. More pages loading...';
         });
+        log('First page is converted, continuing with rest of the pages in BG...');
         isFirstPage = false;
-      } else {
-        setState(() {
-          _statusMessage = 'Document loaded: ${_pages.length} pages. Converting...';
-        });
       }
       if (newPageIndex > 0) _convertPageInBackground(newPageIndex);
     }
+  }
+
+  void _convertPageInBackground(int pageIndex) {
+    Future.microtask(() {
+      if (_bionicPagesCache.containsKey(pageIndex)) return;
+      final bionicSpans = _convertPageToBionicText(_pages[pageIndex]);
+      _bionicPagesCache[pageIndex] = bionicSpans;
+    });
   }
 
   List<TextSpan> _convertPageToBionicText(String pageText) {
@@ -176,18 +183,6 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
       fixateLength: 3,
     );
     return converter.convert(pageText);
-  }
-
-  void _convertPageInBackground(int pageIndex) async {
-    await Future.microtask(() {
-      if (!mounted || _bionicPagesCache.containsKey(pageIndex)) return;
-      final bionicSpans = _convertPageToBionicText(_pages[pageIndex]);
-      _bionicPagesCache[pageIndex] = bionicSpans;
-
-      if (_currentPageIndex == pageIndex) {
-        setState(() {});
-      }
-    });
   }
 
   Widget _fileConvertingSpinner() {

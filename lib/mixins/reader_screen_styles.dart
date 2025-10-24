@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 import '../home_screen.dart';
 
@@ -30,4 +31,11 @@ mixin BionicReaderScreenStyles on State<BionicReaderHomeScreen> {
     fontWeight: FontWeight.w900,
     color: Theme.of(context).colorScheme.primary, // Highlight color
   );
+
+  static const pagesNavigationPlaceholder = [Padding(
+      padding: EdgeInsets.all(10.0),
+      child: SpinKitHourGlass(
+        color: Colors.white,
+        size: 30.0,
+  ))];
 }

@@ -14,7 +14,7 @@ class BionicReaderApp extends StatelessWidget {
       title: 'Bionic Reader',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey.shade300),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber.shade300),
         useMaterial3: true,
         // Apply Inter font across the app (requires font configuration in pubspec)
         fontFamily: 'Inter',
