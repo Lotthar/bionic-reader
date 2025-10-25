@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'package:bionic_reader/utils/page_text_sanitization.dart';
 import 'package:flutter/widgets.dart';
-
 
 /// Service to paginate text based on visual constraints.
 class TextPaginationService {
@@ -22,47 +22,8 @@ class TextPaginationService {
   );
 
   /// Splits the text into a stream of pages.
-  /// Splits the text into a stream of pages.
   Stream<String> paginateText(String fullText) async* {
-    // --- Start of New Sanitization Logic ---
-
-    // 1. Preserve Page Breaks (e.g., a line with only "2")
-    // Replaces a line containing only a number with a special marker.
-    String sanitizedText = fullText.replaceAll(
-      RegExp(r'^\s*[0-9]+\s*$', multiLine: true),
-      '__PAGE_BREAK__',
-    );
-
-    // 2. Preserve Chapter Headings (e.g., "CHAPTER ONE" or "THE BOY WHO LIVED")
-    // Replaces all-caps lines (>= 5 chars) with the text + a marker.
-    // We use $1 to keep the matched text (the chapter title).
-    sanitizedText = sanitizedText.replaceAllMapped(
-      RegExp(r'^\s*([A-Z][A-Z0-9 ]{4,})\s*$', multiLine: true),
-          (match) => '__CHAPTER_BREAK__${match.group(1)}__CHAPTER_BREAK__',
-    );
-
-    // 3. Preserve "Bigger Gaps" (Explicit Paragraphs)
-    // Replaces any 2+ newlines (which you described as bigger gaps)
-    // with a special marker.
-    sanitizedText = sanitizedText.replaceAll(
-      RegExp(r'\n{2,}'),
-      '__PARAGRAPH_BREAK__',
-    );
-
-    // 4. Remove all remaining (soft) newlines.
-    // This is your original flattening step.
-    sanitizedText = sanitizedText.replaceAll('\n', ' ');
-
-    // 5. Restore all preserved breaks with a standard double newline.
-    // The TextPainter will now render this as a proper paragraph/chapter break.
-    // We add spaces around them to ensure word separation.
-    sanitizedText = sanitizedText
-        .replaceAll('__PAGE_BREAK__', '\n\n')
-        .replaceAll('__CHAPTER_BREAK__', '\n\n')
-        .replaceAll('__PARAGRAPH_BREAK__', '\n\n')
-        .trim();
-
-    // --- End of New Sanitization Logic ---
+    var sanitizedText = PageTextSanitizer(fullText).sanitizedText;
 
     if (sanitizedText.trim().isEmpty) {
       yield 'Document is empty.';
@@ -73,18 +34,18 @@ class TextPaginationService {
       yield sanitizedText;
       return;
     }
-
     String remainingText = sanitizedText.trim();
+
     while (remainingText.isNotEmpty) {
       await Future.delayed(Duration.zero);
-      final split = _splitNextPage(remainingText);
-      yield split.pageContent;
-      remainingText = split.remainingText;
+      var (pageContent, newRemainingText) = _splitNextPage(remainingText);
+      yield pageContent;
+      remainingText = newRemainingText;
     }
   }
 
   // Splits the next page from the remaining text.
-  _PageSplit _splitNextPage(String remainingText) {
+  (String, String) _splitNextPage(String remainingText) {
     final textPainter = TextPainter(
       text: TextSpan(text: remainingText, style: textStyle),
       textDirection: TextDirection.ltr,
@@ -105,7 +66,7 @@ class TextPaginationService {
     final pageContent = remainingText.substring(0, endPosition).trim();
     final newRemainingText = remainingText.substring(endPosition).trim();
 
-    return _PageSplit(pageContent, newRemainingText);
+    return (pageContent, newRemainingText);
   }
 
   // Finds the last word boundary before the cutoff point.
@@ -119,14 +80,6 @@ class TextPaginationService {
 
     return cutoff;
   }
-}
-
-// Helper class to hold the result of a page split
-class _PageSplit {
-  final String pageContent;
-  final String remainingText;
-
-  _PageSplit(this.pageContent, this.remainingText);
 }
 
 // Helper class to encapsulate layout-related calculations
