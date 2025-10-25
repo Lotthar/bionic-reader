@@ -2,9 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 
-import '../screens/home_screen.dart';
+import '../screens/reader_screen.dart';
 
-mixin BionicReaderScreenStyles on State<BionicReaderHomeScreen> {
+mixin BionicReaderScreenStyles on State<ReaderScreen> {
   // --- Configuration for Book Format ---
   final double horizontalPadding = 32.0;
   final double verticalTopPadding = 32.0; // Explicit constant for top padding

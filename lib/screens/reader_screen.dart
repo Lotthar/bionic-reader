@@ -10,15 +10,15 @@ import 'package:bionic_reader/widgets/text_pagination_actions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-class BionicReaderHomeScreen extends StatefulWidget {
-  final String title;
-  const BionicReaderHomeScreen({super.key, required this.title});
+class ReaderScreen extends StatefulWidget {
+
+  const ReaderScreen({super.key });
 
   @override
-  State<BionicReaderHomeScreen> createState() => _BionicReaderScreenState();
+  State<ReaderScreen> createState() => _ReaderScreenState();
 }
 
-class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with BionicReaderScreenStyles{
+class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyles{
   // --- State Variables ---
   bool _isLoading = false;
   bool _allPagesConverted = false;
@@ -34,7 +34,7 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
       builder: (context, constraints) {
         return Scaffold(
           appBar: CustomAppBar(
-            title: widget.title,
+            title: 'Bionic Reader',
             actions: !_isLoading && _pages.isNotEmpty && !_allPagesConverted ?
                 BionicReaderScreenStyles.pagesNavigationPlaceholder :
                 _buildPaginationActions(),

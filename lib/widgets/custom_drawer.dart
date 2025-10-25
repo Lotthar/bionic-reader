@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/navigation_routes.dart';
+
 class CustomDrawer extends StatelessWidget {
   const CustomDrawer({super.key});
 
@@ -21,20 +23,7 @@ class CustomDrawer extends StatelessWidget {
               ),
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Home'),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Settings'),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/settings');
-            },
-          ),
+          ...Navigation.listTilesFromRoutes(context)
         ],
       ),
     );
