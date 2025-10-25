@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'home_screen.dart'; // Import the main screen
+import 'screens/home_screen.dart'; // Import the main screen
 
 void main() {
   runApp(const BionicReaderApp());

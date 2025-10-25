@@ -4,7 +4,7 @@ import 'package:bionic_reader/mixins/reader_screen_styles.dart';
 import 'package:bionic_reader/services/document_loader_service.dart';
 import 'package:bionic_reader/services/text_pagination_service.dart';
 import 'package:bionic_reader/utils/bionic_conversion_isolate.dart';
-import 'package:bionic_reader/widgets/pagination_actions.dart';
+import 'package:bionic_reader/widgets/text_pagination_actions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 

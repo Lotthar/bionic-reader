@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 
-import '../home_screen.dart';
+import '../screens/home_screen.dart';
 
 mixin BionicReaderScreenStyles on State<BionicReaderHomeScreen> {
   // --- Configuration for Book Format ---

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:bionic_reader/utils/page_text_sanitization.dart';
+import 'package:bionic_reader/utils/text_sanitization.dart';
 import 'package:flutter/widgets.dart';
 
 /// Service to paginate text based on visual constraints.
