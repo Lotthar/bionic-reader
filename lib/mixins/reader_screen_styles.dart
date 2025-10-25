@@ -8,7 +8,7 @@ mixin BionicReaderScreenStyles on State<BionicReaderHomeScreen> {
   // --- Configuration for Book Format ---
   final double horizontalPadding = 32.0;
   final double verticalTopPadding = 32.0; // Explicit constant for top padding
-  final double verticalBottomPadding = 64.0; // Explicit, larger constant for bottom padding
+  final double verticalBottomPadding = 80.0; // Explicit, larger constant for bottom padding
   // Standard max width for comfortable reading on large screens
   static const double maxContentWidth = 700.0;
 
