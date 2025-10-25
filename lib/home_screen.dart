@@ -103,7 +103,7 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
     // 2. If the current page hasn't been converted yet (loading async), show a spinner
     if (_pages.isNotEmpty && bionicSpans == null) return _fileConvertingSpinner();
     // Fallback for initial state or error state if cache is empty
-    if (_pages.isEmpty || bionicSpans == null) return _statusFallback();
+    if (_pages.isEmpty || bionicSpans == null) return _displayStatusFallback();
     // 3. Use RichText to display the converted TextSpans
     return _convertedTextSpans(bionicSpans);
   }
@@ -139,7 +139,7 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
     _bionicPagesCache.clear();
 
     final streamOfPages = paginationService.paginateText(fullText);
-    await _convertIncomingPaginatedText(streamOfPages);
+    _convertIncomingPaginatedText(streamOfPages);
 
     log('All pages are converted');
     setState(() {
@@ -198,7 +198,7 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
     );
   }
 
-  Widget _statusFallback() {
+  Widget _displayStatusFallback() {
     return Center(
       child: Text(
         _statusMessage,
