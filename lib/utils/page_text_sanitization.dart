@@ -1,14 +1,14 @@
 
 class PageTextSanitizer {
 
-  final String input;
+  final String text;
 
-  PageTextSanitizer(this.input);
+  PageTextSanitizer(this.text);
 
   String get sanitizedText {
     // 1. Preserve Page Breaks (e.g., a line with only "2")
     // Replaces a line containing only a number with a special marker.
-    return input.replaceAll(
+    return text.replaceAll(
       RegExp(r'^\s*[0-9]+\s*$', multiLine: true),
       '__PAGE_BREAK__',
     )
