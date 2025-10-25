@@ -4,6 +4,8 @@ import 'package:bionic_reader/mixins/reader_screen_styles.dart';
 import 'package:bionic_reader/services/document_loader_service.dart';
 import 'package:bionic_reader/services/text_pagination_service.dart';
 import 'package:bionic_reader/utils/bionic_conversion_isolate.dart';
+import 'package:bionic_reader/widgets/custom_app_bar.dart';
+import 'package:bionic_reader/widgets/custom_drawer.dart';
 import 'package:bionic_reader/widgets/text_pagination_actions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -31,13 +33,13 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
     return LayoutBuilder(
       builder: (context, constraints) {
         return Scaffold(
-          appBar: AppBar(
-            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-            title: Text(widget.title),
+          appBar: CustomAppBar(
+            title: widget.title,
             actions: !_isLoading && _pages.isNotEmpty && !_allPagesConverted ?
                 BionicReaderScreenStyles.pagesNavigationPlaceholder :
                 _buildPaginationActions(),
           ),
+          drawer: const CustomDrawer(),
           body: Center(
             child: _isLoading
                 ? const CircularProgressIndicator()

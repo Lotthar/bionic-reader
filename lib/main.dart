@@ -1,5 +1,6 @@
+import 'package:bionic_reader/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart'; // Import the main screen
+import 'package:bionic_reader/screens/home_screen.dart'; // Import the main screen
 
 void main() {
   runApp(const BionicReaderApp());
@@ -19,7 +20,11 @@ class BionicReaderApp extends StatelessWidget {
         // Apply Inter font across the app (requires font configuration in pubspec)
         fontFamily: 'Inter',
       ),
-      home: const BionicReaderHomeScreen(title: 'Bionic Reader'),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const BionicReaderHomeScreen(title: 'Bionic Reader'),
+        '/settings': (context) => const SettingsScreen(),
+      },
     );
   }
 }
