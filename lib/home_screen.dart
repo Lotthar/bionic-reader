@@ -2,9 +2,10 @@ import 'dart:developer';
 
 import 'package:bionic_reader/mixins/reader_screen_styles.dart';
 import 'package:bionic_reader/services/document_loader_service.dart';
-import 'package:bionic_reader/services/text_converter_service.dart';
 import 'package:bionic_reader/services/text_pagination_service.dart';
+import 'package:bionic_reader/utils/bionic_conversion_isolate.dart';
 import 'package:bionic_reader/widgets/pagination_actions.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class BionicReaderHomeScreen extends StatefulWidget {
@@ -139,7 +140,7 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
     _bionicPagesCache.clear();
 
     final streamOfPages = paginationService.paginateText(fullText);
-    _convertIncomingPaginatedText(streamOfPages);
+    await _convertIncomingPaginatedText(streamOfPages);
 
     log('All pages are converted');
     setState(() {
@@ -155,7 +156,7 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
       final newPageIndex = _pages.length - 1;
       if (isFirstPage) {
         // For the first page, convert it synchronously and update the UI
-        _bionicPagesCache[0] = _convertPageToBionicText(_pages[0]);
+        await _convertPageInBackground(0);
         setState(() {
           _currentPageIndex = 0;
           _isLoading = false; // We have content to show, so stop loading indicator
@@ -168,21 +169,19 @@ class _BionicReaderScreenState extends State<BionicReaderHomeScreen> with Bionic
     }
   }
 
-  void _convertPageInBackground(int pageIndex) {
-    Future.microtask(() {
-      if (_bionicPagesCache.containsKey(pageIndex)) return;
-      final bionicSpans = _convertPageToBionicText(_pages[pageIndex]);
-      _bionicPagesCache[pageIndex] = bionicSpans;
-    });
-  }
-
-  List<TextSpan> _convertPageToBionicText(String pageText) {
-    final converter = BionicTextConverter(
-      baseStyle: baseTextStyle,
-      boldStyle: boldTextStyle,
-      fixateLength: 3,
+  Future<void> _convertPageInBackground(int pageIndex) async {
+    if (_bionicPagesCache.containsKey(pageIndex)) return;
+    final payload = BionicConverterPayload(
+      _pages[pageIndex],
+      baseTextStyle,
+      boldTextStyle,
     );
-    return converter.convert(pageText);
+    final bionicSpans = await compute(convertPageToBionicTextIsolate, payload);
+    if(mounted) {
+      setState(() {
+        _bionicPagesCache[pageIndex] = bionicSpans;
+      });
+    }
   }
 
   Widget _fileConvertingSpinner() {
