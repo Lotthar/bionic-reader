@@ -12,6 +12,8 @@ mixin BionicReaderScreenStyles on State<ReaderScreen> {
   // Standard max width for comfortable reading on large screens
   static const double maxContentWidth = 700.0;
 
+  late final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
   EdgeInsets get paddingLTRB => EdgeInsets.fromLTRB(
       horizontalPadding,
       verticalTopPadding,
@@ -24,7 +26,7 @@ mixin BionicReaderScreenStyles on State<ReaderScreen> {
   TextStyle get baseTextStyle => Theme.of(context).textTheme.bodyLarge!.copyWith(
     fontSize: 18.0,
     height: 1.5,
-    color: Colors.black, // Default color for unbolded text
+    color: isDarkMode ? Colors.white : Colors.black, // Default color for unbolded text
   );
 
   TextStyle get boldTextStyle => baseTextStyle.copyWith(
