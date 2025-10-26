@@ -6,6 +6,7 @@ import 'package:bionic_reader/services/text_pagination_service.dart';
 import 'package:bionic_reader/utils/bionic_conversion_isolate.dart';
 import 'package:bionic_reader/widgets/custom_app_bar.dart';
 import 'package:bionic_reader/widgets/custom_drawer.dart';
+import 'package:bionic_reader/widgets/swipe_detector.dart';
 import 'package:bionic_reader/widgets/text_pagination_actions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -40,10 +41,14 @@ class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyl
                 _buildPaginationActions(),
           ),
           drawer: const CustomDrawer(),
-          body: Center(
-            child: _isLoading
-                ? const CircularProgressIndicator()
-                : _buildDocumentContent(),
+          body: SwipeDetector(
+            onSwipeLeft: _nextPage,
+            onSwipeRight: _previousPage,
+            child: Center(
+              child: _isLoading
+                  ? const CircularProgressIndicator()
+                  : _buildDocumentContent(),
+            ),
           ),
           floatingActionButton: FloatingActionButton(
             // Pass constraints to the file picker function so it can paginate immediately after loading.
@@ -85,16 +90,8 @@ class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyl
       _pages,
       _isLoading,
       _currentPageIndex,
-      onPreviousPage: () => setState(() {
-        if (_currentPageIndex > 0) {
-          _currentPageIndex--;
-        }
-      }),
-      onNextPage: () => setState(() {
-        if (_currentPageIndex < _pages.length - 1) {
-          _currentPageIndex++;
-        }
-      }),
+      onPreviousPage: _previousPage,
+      onNextPage: _nextPage,
     );
     return actionsHelper.buildPaginationActions();
   }
@@ -225,5 +222,24 @@ class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyl
       _bionicPagesCache.clear();
       _isLoading = false;
     });
+  }
+
+  // --- Navigation Methods ---
+  void _nextPage() {
+    if (!_allPagesConverted) return;
+    if (_currentPageIndex < _pages.length - 1) {
+      setState(() {
+        _currentPageIndex++;
+      });
+    }
+  }
+
+  void _previousPage() {
+    if (!_allPagesConverted) return;
+    if (_currentPageIndex > 0) {
+      setState(() {
+        _currentPageIndex--;
+      });
+    }
   }
 }
