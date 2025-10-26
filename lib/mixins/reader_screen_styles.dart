@@ -1,7 +1,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-
 import '../screens/reader_screen.dart';
 
 mixin BionicReaderScreenStyles on State<ReaderScreen> {
@@ -24,7 +23,7 @@ mixin BionicReaderScreenStyles on State<ReaderScreen> {
 
   // NEW: Utility Styles for Bionic Conversion
   TextStyle get baseTextStyle => Theme.of(context).textTheme.bodyLarge!.copyWith(
-    fontSize: 18.0,
+    fontSize: 20.0,
     height: 1.5,
     color: isDarkMode ? Colors.white : Colors.black, // Default color for unbolded text
   );

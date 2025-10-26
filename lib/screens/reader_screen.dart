@@ -7,7 +7,7 @@ import 'package:bionic_reader/utils/bionic_conversion_isolate.dart';
 import 'package:bionic_reader/widgets/custom_app_bar.dart';
 import 'package:bionic_reader/widgets/custom_drawer.dart';
 import 'package:bionic_reader/widgets/swipe_detector.dart';
-import 'package:bionic_reader/widgets/text_pagination_actions.dart';
+import 'package:bionic_reader/widgets/home/text_pagination_actions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
