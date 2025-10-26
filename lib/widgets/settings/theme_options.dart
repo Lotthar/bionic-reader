@@ -10,12 +10,9 @@ class ThemeOptions {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Padding(
-          padding: EdgeInsets.only(left: 20),
-          child: Text(
+        Text(
             'Theme Options',
             style: Theme.of(context).textTheme.titleLarge,
-          ),
         ),
         const SizedBox(height: 10),
         Consumer<ThemeNotifier>(
