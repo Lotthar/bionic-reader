@@ -19,7 +19,7 @@ class ReaderScreen extends StatefulWidget {
   State<ReaderScreen> createState() => _ReaderScreenState();
 }
 
-class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyles{
+class _ReaderScreenState extends State<ReaderScreen> with ReaderScreenStyles{
   // --- State Variables ---
   bool _isLoading = false;
   bool _allPagesConverted = false;
@@ -37,7 +37,9 @@ class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyl
           appBar: CustomAppBar(
             title: 'Bionic Reader',
             actions: !_isLoading && _pages.isNotEmpty && !_allPagesConverted ?
-                BionicReaderScreenStyles.pagesNavigationPlaceholder :
+            [Padding(
+                padding: EdgeInsets.all(10.0),
+                child: ReaderScreenStyles.loadingSpinner(30.0))] :
                 _buildPaginationActions(),
           ),
           drawer: const CustomDrawer(),
@@ -46,7 +48,7 @@ class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyl
             onSwipeRight: _previousPage,
             child: Center(
               child: _isLoading
-                  ? const CircularProgressIndicator()
+                  ? ReaderScreenStyles.loadingSpinner(60.0)
                   : _buildDocumentContent(),
             ),
           ),
@@ -67,7 +69,7 @@ class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyl
         padding: paddingLTRB,
         child: Container(
           constraints: const BoxConstraints(
-            maxWidth: BionicReaderScreenStyles.maxContentWidth,
+            maxWidth: ReaderScreenStyles.maxContentWidth,
           ),
           alignment: Alignment.topLeft,
           // NEW: Use RichText to display the list of TextSpan
@@ -135,6 +137,7 @@ class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyl
       appBarHeight: kToolbarHeight,
       boxConstraints: constraints
     );
+    _allPagesConverted = false;
     _pages.clear();
     _bionicPagesCache.clear();
 
@@ -142,10 +145,12 @@ class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyl
     await _convertIncomingPaginatedText(streamOfPages);
 
     log('All pages are converted');
-    setState(() {
-      _statusMessage = 'Document loaded: ${_pages.length} pages.';
-      _allPagesConverted = true;
-    });
+    if(mounted) {
+      setState(() {
+        _statusMessage = 'Document loaded: ${_pages.length} pages.';
+        _allPagesConverted = true;
+      });
+    }
   }
 
   Future<void> _convertIncomingPaginatedText(Stream<String> incomingPages) async {
@@ -164,7 +169,7 @@ class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyl
         log('First page is converted, continuing with rest of the pages in BG...');
         isFirstPage = false;
       }
-      if (newPageIndex > 0) _convertPageInBackground(newPageIndex);
+      if (newPageIndex > 0) await _convertPageInBackground(newPageIndex);
     }
   }
 
@@ -188,7 +193,7 @@ class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyl
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(),
+          ReaderScreenStyles.loadingSpinner(60.0),
           const SizedBox(height: 16),
           Text('Converting page ${_currentPageIndex + 1}...'),
         ],
@@ -226,7 +231,8 @@ class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyl
 
   // --- Navigation Methods ---
   void _nextPage() {
-    if (!_allPagesConverted) return;
+    bool isNextPageConverted = _bionicPagesCache.containsKey(_currentPageIndex + 1);
+    if (!_allPagesConverted && !isNextPageConverted) return;
     if (_currentPageIndex < _pages.length - 1) {
       setState(() {
         _currentPageIndex++;
@@ -235,7 +241,6 @@ class _ReaderScreenState extends State<ReaderScreen> with BionicReaderScreenStyl
   }
 
   void _previousPage() {
-    if (!_allPagesConverted) return;
     if (_currentPageIndex > 0) {
       setState(() {
         _currentPageIndex--;

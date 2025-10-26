@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../screens/reader_screen.dart';
 
-mixin BionicReaderScreenStyles on State<ReaderScreen> {
+mixin ReaderScreenStyles on State<ReaderScreen> {
   // --- Configuration for Book Format ---
-  final double horizontalPadding = 32.0;
+  final double horizontalPadding = 25.0;
   final double verticalTopPadding = 32.0; // Explicit constant for top padding
   final double verticalBottomPadding = 80.0; // Explicit, larger constant for bottom padding
   // Standard max width for comfortable reading on large screens
@@ -23,7 +23,7 @@ mixin BionicReaderScreenStyles on State<ReaderScreen> {
 
   // NEW: Utility Styles for Bionic Conversion
   TextStyle get baseTextStyle => Theme.of(context).textTheme.bodyLarge!.copyWith(
-    fontSize: 20.0,
+    fontSize: 16.0,
     height: 1.5,
     color: isDarkMode ? Colors.white : Colors.black, // Default color for unbolded text
   );
@@ -33,10 +33,8 @@ mixin BionicReaderScreenStyles on State<ReaderScreen> {
     color: Theme.of(context).colorScheme.primary, // Highlight color
   );
 
-  static const pagesNavigationPlaceholder = [Padding(
-      padding: EdgeInsets.all(10.0),
-      child: SpinKitHourGlass(
+  static Widget loadingSpinner(double size) => SpinKitHourGlass(
         color: Colors.white,
-        size: 30.0,
-  ))];
+        size: size,
+  );
 }
