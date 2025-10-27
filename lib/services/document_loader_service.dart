@@ -11,9 +11,11 @@ class FileLoaderException implements Exception {
 }
 
 class DocumentLoaderService {
-  /// Opens the file picker, extracts text from the selected PDF, and returns it.
-  /// Throws FileLoaderException on failure or cancellation.
-  Future<String> loadPdfText() async {
+  /// Opens the file picker, extracts text from the selected PDF.
+  ///
+  /// Returns a record containing the file path and the extracted text.
+  /// Throws [FileLoaderException] on failure or cancellation.
+  Future<({String path, String text})> pickAndLoadPdfText() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
@@ -23,10 +25,29 @@ class DocumentLoaderService {
       throw FileLoaderException('File selection canceled.');
     }
 
-    File file = File(result.files.single.path!);
+    final path = result.files.single.path!;
+    final file = File(path);
+    final text = await _extractTextFromFile(file);
 
+    return (path: path, text: text);
+  }
+
+  /// Loads and extracts text from a PDF at the given [filePath].
+  ///
+  /// Throws [FileLoaderException] if the file doesn't exist or fails processing.
+  Future<String> loadPdfTextFromPath(String filePath) async {
+    final file = File(filePath);
+
+    if (!await file.exists()) {
+      throw FileLoaderException('File not found at the specified path.');
+    }
+
+    return await _extractTextFromFile(file);
+  }
+
+  /// Extracts text from the given PDF [File] object.
+  Future<String> _extractTextFromFile(File file) async {
     try {
-      // Use the pdf_text package to extract content
       PDFDoc pdfDoc = await PDFDoc.fromFile(file);
       String fullText = await pdfDoc.text;
 
@@ -34,10 +55,14 @@ class DocumentLoaderService {
         throw FileLoaderException('The selected PDF contains no readable text.');
       }
       return fullText;
-
     } catch (e) {
-      // Catch PDF processing errors
       throw FileLoaderException('Error processing PDF file: ${e.toString()}');
     }
+  }
+
+  @Deprecated('Use pickAndLoadPdfText() instead to get both path and text.')
+  Future<String> loadPdfText() async {
+    final result = await pickAndLoadPdfText();
+    return result.text;
   }
 }

@@ -23,7 +23,7 @@ class TextPaginationService {
 
   /// Splits the text into a stream of pages.
   Stream<String> paginateText(String fullText) async* {
-    var sanitizedText = PageTextSanitizer(fullText).sanitizedText;
+    var sanitizedText = TextSanitizer(fullText).sanitizedText;
 
     if (sanitizedText.trim().isEmpty) {
       yield 'Document is empty.';

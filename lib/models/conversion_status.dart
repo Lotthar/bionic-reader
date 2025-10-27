@@ -1,0 +1,1 @@
+enum ConversionStatus { QUEUED, CONVERTING, COMPLETED, FAILED }

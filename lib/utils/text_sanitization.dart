@@ -1,9 +1,9 @@
 
-class PageTextSanitizer {
+class TextSanitizer {
 
   final String text;
 
-  PageTextSanitizer(this.text);
+  TextSanitizer(this.text);
 
   String get sanitizedText {
     // 1. Preserve Page Breaks (e.g., a line with only "2")

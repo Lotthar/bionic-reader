@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../screens/reader_screen.dart';
 
-mixin ReaderScreenStyles on State<ReaderScreen> {
+mixin ReadingScreenStyles on State<ReaderScreen> {
   // --- Configuration for Book Format ---
   final double horizontalPadding = 25.0;
   final double verticalTopPadding = 32.0; // Explicit constant for top padding
@@ -33,8 +33,8 @@ mixin ReaderScreenStyles on State<ReaderScreen> {
     color: Theme.of(context).colorScheme.primary, // Highlight color
   );
 
-  static Widget loadingSpinner(double size) => SpinKitHourGlass(
-        color: Colors.white,
+  static Widget loadingSpinner(double size, BuildContext context) => SpinKitSpinningCircle(
+        color: Theme.of(context).colorScheme.inversePrimary,
         size: size,
   );
 }

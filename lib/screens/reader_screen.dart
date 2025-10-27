@@ -1,65 +1,90 @@
-import 'dart:developer';
-
-import 'package:bionic_reader/mixins/reader_screen_styles.dart';
-import 'package:bionic_reader/services/document_loader_service.dart';
-import 'package:bionic_reader/services/text_pagination_service.dart';
+import 'package:bionic_reader/models/book.dart';
+import 'package:bionic_reader/models/conversion_status.dart';
+import 'package:bionic_reader/services/book_cache_service.dart';
+import 'package:bionic_reader/services/database_service.dart';
 import 'package:bionic_reader/utils/bionic_conversion_isolate.dart';
 import 'package:bionic_reader/widgets/custom_app_bar.dart';
 import 'package:bionic_reader/widgets/custom_drawer.dart';
-import 'package:bionic_reader/widgets/swipe_detector.dart';
 import 'package:bionic_reader/widgets/home/text_pagination_actions.dart';
+import 'package:bionic_reader/widgets/swipe_detector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-class ReaderScreen extends StatefulWidget {
+import '../mixins/reading_screen_styles.dart';
+import '../service_locator.dart';
 
-  const ReaderScreen({super.key });
+class ReaderScreen extends StatefulWidget {
+  final String bookId;
+  const ReaderScreen({super.key, required this.bookId});
 
   @override
   State<ReaderScreen> createState() => _ReaderScreenState();
 }
 
-class _ReaderScreenState extends State<ReaderScreen> with ReaderScreenStyles{
+class _ReaderScreenState extends State<ReaderScreen> with ReadingScreenStyles {
   // --- State Variables ---
-  bool _isLoading = false;
-  bool _allPagesConverted = false;
-  String _statusMessage = 'Tap to select a document';
-  int _currentPageIndex = 0; // 0-based index for the current page
-  List<String> _pages = []; // List to hold paginated text content
+  bool _isLoading = true;
+  String _statusMessage = 'Loading...';
+  int _currentPageIndex = 0;
+  List<String> _pages = [];
   final Map<int, List<TextSpan>> _bionicPagesCache = {};
+  Book? _book;
+
+  final BookCacheService _bookCacheService = locator<BookCacheService>();
+  final DatabaseService _databaseService = locator<DatabaseService>();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBook();
+  }
+
+  Future<void> _loadBook() async {
+    final books = await _databaseService.getAllBooks();
+    final book = books.firstWhere((b) => b.id == widget.bookId);
+    setState(() {
+      _book = book;
+      _currentPageIndex = book.lastReadPage; // Start at the last read page
+    });
+    _loadPages();
+  }
+
+  Future<void> _loadPages() async {
+    if (_book == null) return;
+    List<String> loadedPages = [];
+    for (int i = 0; i < _book!.totalPages; i++) {
+      final pageContent = await _bookCacheService.loadPage(_book!.id, i);
+      if (pageContent != null) {
+        loadedPages.add(pageContent);
+      } else {
+        loadedPages.add('Error: Could not load page $i');
+      }
+    }
+    setState(() {
+      _pages = loadedPages;
+      _isLoading = false;
+      _statusMessage = '';
+    });
+    _convertPageInBackground(_currentPageIndex);
+  }
 
   @override
   Widget build(BuildContext context) {
-    // LayoutBuilder provides the necessary constraints (width and height) for dynamic pagination
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Scaffold(
-          appBar: CustomAppBar(
-            title: 'Bionic Reader',
-            actions: !_isLoading && _pages.isNotEmpty && !_allPagesConverted ?
-            [Padding(
-                padding: EdgeInsets.all(10.0),
-                child: ReaderScreenStyles.loadingSpinner(30.0))] :
-                _buildPaginationActions(),
-          ),
-          drawer: const CustomDrawer(),
-          body: SwipeDetector(
-            onSwipeLeft: _nextPage,
-            onSwipeRight: _previousPage,
-            child: Center(
-              child: _isLoading
-                  ? ReaderScreenStyles.loadingSpinner(60.0)
-                  : _buildDocumentContent(),
-            ),
-          ),
-          floatingActionButton: FloatingActionButton(
-            // Pass constraints to the file picker function so it can paginate immediately after loading.
-            onPressed: () => _pickAndConvertFile(constraints),
-            tooltip: 'Select Document',
-            child: const Icon(Icons.upload_file),
-          ),
-        );
-      },
+    return Scaffold(
+      appBar: CustomAppBar(
+        title: _book?.title ?? 'Bionic Reader',
+        actions: _buildPaginationActions(),
+      ),
+      drawer: const CustomDrawer(),
+      body: SwipeDetector(
+        onSwipeLeft: _nextPage,
+        onSwipeRight: _previousPage,
+        child: Center(
+          child: _isLoading
+              ? ReadingScreenStyles.loadingSpinner(60.0, context)
+              : _buildDocumentContent(),
+        ),
+      ),
     );
   }
 
@@ -69,16 +94,14 @@ class _ReaderScreenState extends State<ReaderScreen> with ReaderScreenStyles{
         padding: paddingLTRB,
         child: Container(
           constraints: const BoxConstraints(
-            maxWidth: ReaderScreenStyles.maxContentWidth,
+            maxWidth: ReadingScreenStyles.maxContentWidth,
           ),
           alignment: Alignment.topLeft,
-          // NEW: Use RichText to display the list of TextSpan
           child: RichText(
             textAlign: TextAlign.start,
             text: TextSpan(
-              // The base style is necessary for general font properties (line height, etc.)
               style: baseTextStyle,
-              children: spans, // Pass the converted list of spans
+              children: spans,
             ),
           ),
         ),
@@ -86,7 +109,6 @@ class _ReaderScreenState extends State<ReaderScreen> with ReaderScreenStyles{
     );
   }
 
-  // How you would use it in the AppBar:
   List<Widget>? _buildPaginationActions() {
     final actionsHelper = PaginationActions(
       _pages,
@@ -98,94 +120,55 @@ class _ReaderScreenState extends State<ReaderScreen> with ReaderScreenStyles{
     return actionsHelper.buildPaginationActions();
   }
 
-  /// Builds the main reading area, applying book-style padding and constraints.
   Widget _buildDocumentContent() {
-    // 1. Check the cache for the converted bionic page
+    if (_pages.isEmpty) {
+      if (_book != null && _book!.conversionStatus != ConversionStatus.COMPLETED) {
+        return _stillConvertingSpinner();
+      }
+      return _displayStatusFallback();
+    }
+
     final List<TextSpan>? bionicSpans = _bionicPagesCache[_currentPageIndex];
-    // 2. If the current page hasn't been converted yet (loading async), show a spinner
-    if (_pages.isNotEmpty && bionicSpans == null) return _fileConvertingSpinner();
-    // Fallback for initial state or error state if cache is empty
-    if (_pages.isEmpty || bionicSpans == null) return _displayStatusFallback();
-    // 3. Use RichText to display the converted TextSpans
+    if (bionicSpans == null) {
+      _convertPageInBackground(_currentPageIndex);
+      return _fileConvertingSpinner();
+    }
+    
     return _convertedTextSpans(bionicSpans);
   }
 
-  void _pickAndConvertFile(BoxConstraints constraints) async {
-    setState(() {
-      _isLoading = true;
-      _pages = [];
-      _bionicPagesCache.clear();
-      _statusMessage = 'Loading document...';
-    });
-
-    try {
-      final loader = DocumentLoaderService();
-      String fullText = await loader.loadPdfText();
-      await _setPagesFromStream(fullText, constraints);
-    } on FileLoaderException catch (e) {
-      _handleFileLoaderException(e);
-    } catch (e) {
-      _handlePickAndConvertFileException(e);
-    }
-  }
-
-  Future<void> _setPagesFromStream(String fullText, BoxConstraints constraints) async {
-    final paginationService = TextPaginationService(
-      horizontalPadding: horizontalPadding,
-      verticalPadding: totalVerticalPadding / 2,
-      textStyle: baseTextStyle,
-      appBarHeight: kToolbarHeight,
-      boxConstraints: constraints
-    );
-    _allPagesConverted = false;
-    _pages.clear();
-    _bionicPagesCache.clear();
-
-    final streamOfPages = paginationService.paginateText(fullText);
-    await _convertIncomingPaginatedText(streamOfPages);
-
-    log('All pages are converted');
-    if(mounted) {
-      setState(() {
-        _statusMessage = 'Document loaded: ${_pages.length} pages.';
-        _allPagesConverted = true;
-      });
-    }
-  }
-
-  Future<void> _convertIncomingPaginatedText(Stream<String> incomingPages) async {
-    bool isFirstPage = true;
-    await for (final pageText in incomingPages) {
-      _pages.add(pageText);
-      final newPageIndex = _pages.length - 1;
-      if (isFirstPage) {
-        // For the first page, convert it synchronously and update the UI
-        await _convertPageInBackground(0);
-        setState(() {
-          _currentPageIndex = 0;
-          _isLoading = false; // We have content to show, so stop loading indicator
-          _statusMessage = 'Page 1 loaded. More pages loading...';
-        });
-        log('First page is converted, continuing with rest of the pages in BG...');
-        isFirstPage = false;
-      }
-      if (newPageIndex > 0) await _convertPageInBackground(newPageIndex);
-    }
-  }
-
   Future<void> _convertPageInBackground(int pageIndex) async {
-    if (_bionicPagesCache.containsKey(pageIndex)) return;
+    if (_bionicPagesCache.containsKey(pageIndex) || _pages.isEmpty) return;
+
     final payload = BionicConverterPayload(
       _pages[pageIndex],
       baseTextStyle,
       boldTextStyle,
     );
     final bionicSpans = await compute(convertPageToBionicTextIsolate, payload);
-    if(mounted) {
+    if (mounted) {
       setState(() {
         _bionicPagesCache[pageIndex] = bionicSpans;
       });
     }
+  }
+
+   Widget _stillConvertingSpinner() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ReadingScreenStyles.loadingSpinner(60.0, context),
+          const SizedBox(height: 16),
+          const Text('Book is still being converted...'),
+          const SizedBox(height: 8),
+          ElevatedButton(
+            onPressed: _loadPages,
+            child: const Text('Refresh'),
+          )
+        ],
+      ),
+    );
   }
 
   Widget _fileConvertingSpinner() {
@@ -193,7 +176,7 @@ class _ReaderScreenState extends State<ReaderScreen> with ReaderScreenStyles{
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ReaderScreenStyles.loadingSpinner(60.0),
+          ReadingScreenStyles.loadingSpinner(60.0, context),
           const SizedBox(height: 16),
           Text('Converting page ${_currentPageIndex + 1}...'),
         ],
@@ -211,31 +194,17 @@ class _ReaderScreenState extends State<ReaderScreen> with ReaderScreenStyles{
     );
   }
 
-  void _handleFileLoaderException(FileLoaderException e) {
-    setState(() {
-      _statusMessage = 'Load Failed: ${e.message}';
-      _pages = [e.message]; // Display error on page
-      _bionicPagesCache.clear();
-      _isLoading = false;
-    });
+  void _updateLastReadPage(int pageIndex) {
+    if (_book != null) {
+      _databaseService.updateBookLastReadPage(_book!.id, pageIndex);
+    }
   }
 
-  void _handlePickAndConvertFileException(Object e) {
-    setState(() {
-      _statusMessage = 'An unexpected error occurred: ${e.toString()}';
-      _pages = [_statusMessage];
-      _bionicPagesCache.clear();
-      _isLoading = false;
-    });
-  }
-
-  // --- Navigation Methods ---
   void _nextPage() {
-    bool isNextPageConverted = _bionicPagesCache.containsKey(_currentPageIndex + 1);
-    if (!_allPagesConverted && !isNextPageConverted) return;
     if (_currentPageIndex < _pages.length - 1) {
       setState(() {
         _currentPageIndex++;
+        _updateLastReadPage(_currentPageIndex); // Save on page turn
       });
     }
   }
@@ -244,6 +213,7 @@ class _ReaderScreenState extends State<ReaderScreen> with ReaderScreenStyles{
     if (_currentPageIndex > 0) {
       setState(() {
         _currentPageIndex--;
+        _updateLastReadPage(_currentPageIndex); // Save on page turn
       });
     }
   }
