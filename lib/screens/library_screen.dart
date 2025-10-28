@@ -2,7 +2,7 @@ import 'package:bionic_reader/bloc/library_cubit.dart';
 import 'package:bionic_reader/bloc/library_state.dart';
 import 'package:bionic_reader/models/book.dart';
 import 'package:bionic_reader/models/conversion_status.dart';
-import 'package:bionic_reader/screens/reader_screen.dart';
+import 'package:bionic_reader/screens/reading_screen.dart';
 import 'package:bionic_reader/widgets/custom_app_bar.dart';
 import 'package:bionic_reader/widgets/custom_drawer.dart';
 import 'package:flutter/material.dart';
@@ -116,7 +116,7 @@ class BookListItem extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => ReaderScreen(bookId: book.id),
+              builder: (context) => ReadingScreen(bookId: book.id),
             ),
           );
         }
@@ -139,7 +139,7 @@ class BookGridItem extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ReaderScreen(bookId: book.id),
+                builder: (context) => ReadingScreen(bookId: book.id),
               ),
             );
           }

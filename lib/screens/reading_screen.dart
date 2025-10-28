@@ -13,15 +13,15 @@ import 'package:flutter/material.dart';
 import '../mixins/reading_screen_styles.dart';
 import '../service_locator.dart';
 
-class ReaderScreen extends StatefulWidget {
+class ReadingScreen extends StatefulWidget {
   final String bookId;
-  const ReaderScreen({super.key, required this.bookId});
+  const ReadingScreen({super.key, required this.bookId});
 
   @override
-  State<ReaderScreen> createState() => _ReaderScreenState();
+  State<ReadingScreen> createState() => _ReadingScreenState();
 }
 
-class _ReaderScreenState extends State<ReaderScreen> with ReadingScreenStyles {
+class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles {
   // --- State Variables ---
   bool _isLoading = true;
   String _statusMessage = 'Loading...';

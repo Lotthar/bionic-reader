@@ -1,7 +1,7 @@
 
 import 'package:bionic_reader/screens/library_screen.dart';
 import 'package:flutter/material.dart';
-import '../screens/reader_screen.dart';
+import '../screens/reading_screen.dart';
 import '../screens/settings_screen.dart';
 
 enum Routes {
