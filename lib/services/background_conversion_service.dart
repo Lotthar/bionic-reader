@@ -1,13 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:isolate';
-
 import 'package:bionic_reader/models/book.dart';
 import 'package:bionic_reader/models/book_metadata.dart';
 import 'package:bionic_reader/models/conversion_status.dart';
 import 'package:bionic_reader/services/book_cache_service.dart';
+import 'package:bionic_reader/services/cover_image_service.dart';
 import 'package:bionic_reader/services/database_service.dart';
 import 'package:bionic_reader/services/document_loader_service.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 import '../utils/text_sanitization.dart';
 
@@ -47,6 +50,8 @@ class BackgroundConversionService {
     receivePort.listen((data) {
       if (data is BookMetadata) {
         _databaseService.updateBookDetails(queuedBook.id, data);
+      } else if (data is String && data.startsWith('coverPath:')) {
+        _databaseService.updateBookCover(queuedBook.id, data.substring(10));
       } else if (data is double) {
         _databaseService.updateBookStatus(queuedBook.id, ConversionStatus.CONVERTING,progress: data);
       } else if (data is int) {
@@ -72,6 +77,11 @@ class BackgroundConversionService {
     final cacheService = BookCacheService();
 
     try {
+      final bookCoverImagePath = await _extractBookCoverImage(book);
+      if(bookCoverImagePath != null) {
+        sendPort.send('coverPath:$bookCoverImagePath');
+      }
+
       final pdfDoc = await docLoader.loadPdfDocFromPath(book.filePath);
       
       final info = pdfDoc.info;
@@ -96,6 +106,18 @@ class BackgroundConversionService {
     } catch (e) {
       sendPort.send(e.toString());
     }
+  }
+
+  static Future<String?> _extractBookCoverImage(Book book) async {
+    final coverImageService = CoverImageService();
+    final Uint8List? imageBytes = await coverImageService.extractCoverImage(book.filePath);
+    if (imageBytes == null) return null;
+    final Directory appDocDir = await getApplicationDocumentsDirectory();
+    final String coverPath = p.join(appDocDir.path, 'covers', '${book.id}.png');
+    final File coverFile = File(coverPath);
+    await coverFile.create(recursive: true);
+    await coverFile.writeAsBytes(imageBytes);
+    return coverPath;
   }
 
   static List<String> _approximateCharsPerPage(String sanitizedText, {int charsPerPage = 1500}) {

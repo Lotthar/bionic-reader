@@ -36,7 +36,7 @@ class DatabaseService {
         filePath TEXT,
         title TEXT,
         author TEXT,
-        coverImage TEXT,
+        coverImagePath TEXT,
         conversionStatus TEXT,
         progress REAL,
         totalPages INTEGER,
@@ -64,6 +64,12 @@ class DatabaseService {
       'author': metadata.author,
     };
     await db.update('books', data, where: 'id = ?', whereArgs: [id]);
+    _notifyListeners();
+  }
+
+  Future<void> updateBookCover(String id, String coverImagePath) async {
+    final db = await database;
+    await db.update('books', {'coverImagePath': coverImagePath}, where: 'id = ?', whereArgs: [id]);
     _notifyListeners();
   }
 

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:bionic_reader/bloc/library_cubit.dart';
 import 'package:bionic_reader/bloc/library_state.dart';
 import 'package:bionic_reader/models/book.dart';
@@ -108,7 +110,9 @@ class BookListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: const Icon(Icons.book, size: 40),
+      leading: book.coverImagePath != null
+          ? Image.file(File(book.coverImagePath!), width: 40, fit: BoxFit.cover)
+          : const Icon(Icons.book, size: 40),
       title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,12 +173,18 @@ class BookGridItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Container(
-                color: Colors.grey[300],
-                child: const Center(
-                  child: Icon(Icons.book, size: 50, color: Colors.grey),
-                ),
-              ),
+              child: book.coverImagePath != null
+                  ? Image.file(
+                      File(book.coverImagePath!),
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                    )
+                  : Container(
+                      color: Colors.grey[300],
+                      child: const Center(
+                        child: Icon(Icons.book, size: 50, color: Colors.grey),
+                      ),
+                    ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),

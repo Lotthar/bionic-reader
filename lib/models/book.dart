@@ -5,22 +5,22 @@ class Book {
   final String filePath;
   final String title;
   final String? author;
-  final String? coverImage;
+  final String? coverImagePath;
   final ConversionStatus conversionStatus;
   final double progress;
   final int totalPages;
-  final int lastReadPage; // New field
+  final int lastReadPage;
 
   Book({
     required this.id,
     required this.filePath,
     required this.title,
     this.author,
-    this.coverImage,
+    this.coverImagePath,
     this.conversionStatus = ConversionStatus.QUEUED,
     this.progress = 0.0,
     this.totalPages = 0,
-    this.lastReadPage = 0, // Default to the first page
+    this.lastReadPage = 0,
   });
 
   Book copyWith({
@@ -28,7 +28,7 @@ class Book {
     String? filePath,
     String? title,
     String? author,
-    String? coverImage,
+    String? coverImagePath,
     ConversionStatus? conversionStatus,
     double? progress,
     int? totalPages,
@@ -39,7 +39,7 @@ class Book {
       filePath: filePath ?? this.filePath,
       title: title ?? this.title,
       author: author ?? this.author,
-      coverImage: coverImage ?? this.coverImage,
+      coverImagePath: coverImagePath ?? this.coverImagePath,
       conversionStatus: conversionStatus ?? this.conversionStatus,
       progress: progress ?? this.progress,
       totalPages: totalPages ?? this.totalPages,
@@ -53,7 +53,7 @@ class Book {
       'filePath': filePath,
       'title': title,
       'author': author,
-      'coverImage': coverImage,
+      'coverImagePath': coverImagePath,
       'conversionStatus': conversionStatus.name,
       'progress': progress,
       'totalPages': totalPages,
@@ -67,11 +67,11 @@ class Book {
       filePath: map['filePath'],
       title: map['title'],
       author: map['author'],
-      coverImage: map['coverImage'],
+      coverImagePath: map['coverImagePath'],
       conversionStatus: ConversionStatus.values.byName(map['conversionStatus']),
       progress: map['progress'],
       totalPages: map['totalPages'],
-      lastReadPage: map['lastReadPage'] ?? 0, // Handle existing books
+      lastReadPage: map['lastReadPage'] ?? 0,
     );
   }
 }
