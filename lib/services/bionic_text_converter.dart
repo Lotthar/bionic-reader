@@ -1,7 +1,27 @@
 import 'package:flutter/material.dart';
 
+
+class BionicConverterPayload {
+  final String pageText;
+  final TextStyle baseStyle;
+  final TextStyle boldStyle;
+
+  BionicConverterPayload(this.pageText, this.baseStyle, this.boldStyle);
+}
+
+// Top-level function for isolate
+List<TextSpan> convertPageToBionicText(BionicConverterPayload payload) {
+  final converter = BionicTextConverter(
+    baseStyle: payload.baseStyle,
+    boldStyle: payload.boldStyle,
+    fixateLength: 3,
+  );
+  return converter.convert(payload.pageText);
+}
+
 /// A utility class responsible for applying the Bionic Reading transformation
 /// to a plain text string, returning a list of TextSpans for RichText rendering.
+///
 class BionicTextConverter {
   final TextStyle baseStyle;
   final TextStyle boldStyle;

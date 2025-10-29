@@ -2,16 +2,15 @@ import 'package:bionic_reader/models/book.dart';
 import 'package:bionic_reader/models/conversion_status.dart';
 import 'package:bionic_reader/services/book_cache_service.dart';
 import 'package:bionic_reader/services/database_service.dart';
-import 'package:bionic_reader/utils/bionic_conversion_isolate.dart';
 import 'package:bionic_reader/widgets/custom_app_bar.dart';
 import 'package:bionic_reader/widgets/custom_drawer.dart';
 import 'package:bionic_reader/widgets/home/text_pagination_actions.dart';
 import 'package:bionic_reader/widgets/swipe_detector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-
 import '../mixins/reading_screen_styles.dart';
 import '../service_locator.dart';
+import '../services/bionic_text_converter.dart';
 
 class ReadingScreen extends StatefulWidget {
   final String bookId;
@@ -131,7 +130,7 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
     final List<TextSpan>? bionicSpans = _bionicPagesCache[_currentPageIndex];
     if (bionicSpans == null) {
       _convertPageInBackground(_currentPageIndex);
-      return _fileConvertingSpinner();
+      return _pageConvertingSpinner();
     }
     
     return _convertedTextSpans(bionicSpans);
@@ -145,7 +144,7 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
       baseTextStyle,
       boldTextStyle,
     );
-    final bionicSpans = await compute(convertPageToBionicTextIsolate, payload);
+    final bionicSpans = await compute(convertPageToBionicText, payload);
     if (mounted) {
       setState(() {
         _bionicPagesCache[pageIndex] = bionicSpans;
@@ -171,7 +170,7 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
     );
   }
 
-  Widget _fileConvertingSpinner() {
+  Widget _pageConvertingSpinner() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
