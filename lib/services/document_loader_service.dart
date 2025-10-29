@@ -11,6 +11,18 @@ class FileLoaderException implements Exception {
 }
 
 class DocumentLoaderService {
+  Future<PDFDoc> loadPdfDocFromPath(String filePath) async {
+    final file = File(filePath);
+    if (!await file.exists()) {
+      throw FileLoaderException('File not found at the specified path.');
+    }
+    try {
+      return await PDFDoc.fromPath(filePath);
+    } catch (e) {
+      throw FileLoaderException('Error processing PDF file: ${e.toString()}');
+    }
+  }
+
   /// Opens the file picker, extracts text from the selected PDF.
   ///
   /// Returns a record containing the file path and the extracted text.

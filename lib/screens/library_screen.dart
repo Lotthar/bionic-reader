@@ -16,7 +16,7 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
-  bool _isGridView = true;
+  bool _isGridView = false;
 
   @override
   Widget build(BuildContext context) {
@@ -37,11 +37,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
       drawer: const CustomDrawer(),
       body: BlocBuilder<LibraryCubit, LibraryState>(
         builder: (context, state) {
-          if (state.status == LibraryStatus.loading || state.status == LibraryStatus.initial) {
+          if (state.status == LibraryStatus.loading ||
+              state.status == LibraryStatus.initial) {
             return const Center(child: CircularProgressIndicator());
           }
           if (state.status == LibraryStatus.failure) {
-            return Center(child: Text(state.errorMessage ?? 'An error occurred'));
+            return Center(
+                child: Text(state.errorMessage ?? 'An error occurred'));
           }
           if (state.books.isEmpty) {
             return const Center(child: Text('No books in your library.'));
@@ -83,9 +85,12 @@ class BookGridView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
+      padding: const EdgeInsets.all(8.0),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+        crossAxisCount: 2,
         childAspectRatio: 3 / 4,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
       ),
       itemCount: books.length,
       itemBuilder: (context, index) {
@@ -103,11 +108,24 @@ class BookListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: const Icon(Icons.book), // Placeholder for cover image
-      title: Text(book.title),
-      subtitle: book.conversionStatus == ConversionStatus.CONVERTING
-          ? LinearProgressIndicator(value: book.progress)
-          : Text(book.conversionStatus.name),
+      leading: const Icon(Icons.book, size: 40),
+      title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (book.author != null && book.author!.isNotEmpty)
+            Text(
+              book.author!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontStyle: FontStyle.italic),
+            ),
+          const SizedBox(height: 4),
+          book.conversionStatus == ConversionStatus.CONVERTING
+              ? LinearProgressIndicator(value: book.progress)
+              : Text(book.conversionStatus.name),
+        ],
+      ),
       trailing: book.conversionStatus == ConversionStatus.COMPLETED
           ? const Icon(Icons.check_circle, color: Colors.green)
           : const SizedBox.shrink(),
@@ -132,7 +150,9 @@ class BookGridItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
           if (book.conversionStatus == ConversionStatus.COMPLETED) {
@@ -146,19 +166,36 @@ class BookGridItem extends StatelessWidget {
         },
         onLongPress: () => _showDeleteConfirmation(context, book),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: Container(
-                color: Colors.grey[200],
+                color: Colors.grey[300],
                 child: const Center(
                   child: Icon(Icons.book, size: 50, color: Colors.grey),
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+              child: Text(
+                book.title,
+                style: textTheme.titleSmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+            if (book.author != null && book.author!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Text(
+                  book.author!,
+                  style: textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            const Spacer(),
             if (book.conversionStatus == ConversionStatus.CONVERTING)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -169,9 +206,9 @@ class BookGridItem extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(book.conversionStatus.name),
+                  Text(book.conversionStatus.name, style: textTheme.bodySmall),
                   if (book.conversionStatus == ConversionStatus.COMPLETED)
-                    const Icon(Icons.check_circle, color: Colors.green),
+                    const Icon(Icons.check_circle, color: Colors.green, size: 16),
                 ],
               ),
             ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bionic_reader/models/book.dart';
+import 'package:bionic_reader/models/book_metadata.dart';
 import 'package:bionic_reader/models/conversion_status.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -23,7 +24,7 @@ class DatabaseService {
     String path = join(await getDatabasesPath(), 'book_library.db');
     return await openDatabase(
       path,
-      version: 1, // You could also increment the version for a migration
+      version: 1,
       onCreate: _onCreate,
     );
   }
@@ -55,13 +56,17 @@ class DatabaseService {
         conflictAlgorithm: ConflictAlgorithm.replace);
     _notifyListeners();
   }
-
-  Future<void> updateBook(Book book) async {
+  
+  Future<void> updateBookDetails(String id, BookMetadata metadata) async {
     final db = await database;
-    await db.update('books', book.toMap(), where: 'id = ?', whereArgs: [book.id]);
+    final Map<String, dynamic> data = {
+      'title': metadata.title,
+      'author': metadata.author,
+    };
+    await db.update('books', data, where: 'id = ?', whereArgs: [id]);
     _notifyListeners();
   }
-  
+
   Future<void> updateBookLastReadPage(String id, int page) async {
     final db = await database;
     await db.update('books', {'lastReadPage': page}, where: 'id = ?', whereArgs: [id]);

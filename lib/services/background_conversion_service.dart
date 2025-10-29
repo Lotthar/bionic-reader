@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:bionic_reader/models/book.dart';
+import 'package:bionic_reader/models/book_metadata.dart';
 import 'package:bionic_reader/models/conversion_status.dart';
 import 'package:bionic_reader/services/book_cache_service.dart';
 import 'package:bionic_reader/services/database_service.dart';
@@ -11,7 +12,8 @@ import 'package:flutter/services.dart';
 import '../utils/text_sanitization.dart';
 
 class BackgroundConversionService {
-  static final BackgroundConversionService _instance = BackgroundConversionService._internal();
+  static final BackgroundConversionService _instance =
+      BackgroundConversionService._internal();
   factory BackgroundConversionService() => _instance;
   BackgroundConversionService._internal();
 
@@ -43,7 +45,9 @@ class BackgroundConversionService {
         _conversionIsolate, [receivePort.sendPort, queuedBook, rootIsolateToken]);
 
     receivePort.listen((data) {
-      if (data is double) {
+      if (data is BookMetadata) {
+        _databaseService.updateBookDetails(queuedBook.id, data);
+      } else if (data is double) {
         _databaseService.updateBookStatus(queuedBook.id, ConversionStatus.CONVERTING,progress: data);
       } else if (data is int) {
         _databaseService.updateBookStatus(queuedBook.id, ConversionStatus.COMPLETED, progress: 1.0, totalPages: data);
@@ -68,7 +72,16 @@ class BackgroundConversionService {
     final cacheService = BookCacheService();
 
     try {
-      final fullText = await docLoader.loadPdfTextFromPath(book.filePath);
+      final pdfDoc = await docLoader.loadPdfDocFromPath(book.filePath);
+      
+      final info = pdfDoc.info;
+      final metadata = BookMetadata(
+        title: info.title ?? book.title,
+        author: info.author,
+      );
+      sendPort.send(metadata);
+
+      final fullText = await pdfDoc.text;
       final sanitizedText = TextSanitizer(fullText).sanitizedText;
 
       final List<String> pages = _approximateCharsPerPage(sanitizedText);
