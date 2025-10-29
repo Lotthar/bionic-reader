@@ -16,7 +16,7 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
-  bool _isGridView = false;
+  bool _isGridView = true;
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +84,7 @@ class BookGridView extends StatelessWidget {
   Widget build(BuildContext context) {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+        crossAxisCount: 3,
         childAspectRatio: 3 / 4,
       ),
       itemCount: books.length,
