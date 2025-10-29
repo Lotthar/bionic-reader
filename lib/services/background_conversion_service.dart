@@ -11,8 +11,7 @@ import 'package:flutter/services.dart';
 import '../utils/text_sanitization.dart';
 
 class BackgroundConversionService {
-  static final BackgroundConversionService _instance =
-      BackgroundConversionService._internal();
+  static final BackgroundConversionService _instance = BackgroundConversionService._internal();
   factory BackgroundConversionService() => _instance;
   BackgroundConversionService._internal();
 
@@ -21,46 +20,41 @@ class BackgroundConversionService {
 
   Future<void> processQueue() async {
     if (_isProcessing) return;
-
     try {
       final books = await _databaseService.getAllBooks();
       final queuedBook = books.firstWhere(
         (book) => book.conversionStatus == ConversionStatus.QUEUED,
       );
-
       _isProcessing = true;
       await _databaseService.updateBookStatus(
           queuedBook.id, ConversionStatus.CONVERTING);
 
-      final receivePort = ReceivePort();
-      final rootIsolateToken = RootIsolateToken.instance;
-      if (rootIsolateToken == null) {
-        throw Exception("Failed to get RootIsolateToken");
-      }
-      
-      await Isolate.spawn(
-          _conversionIsolate, [receivePort.sendPort, queuedBook, rootIsolateToken]);
-
-      receivePort.listen((data) {
-        if (data is double) {
-          _databaseService.updateBookStatus(queuedBook.id, ConversionStatus.CONVERTING,
-              progress: data);
-        } else if (data is int) {
-            _databaseService.updateBookStatus(queuedBook.id, ConversionStatus.COMPLETED,
-                progress: 1.0, totalPages: data);
-            _isProcessing = false;
-            processQueue();
-        } else if (data is String) {
-          _databaseService.updateBookStatus(
-              queuedBook.id, ConversionStatus.FAILED);
-          _isProcessing = false;
-          processQueue();
-        }
-      });
+      _handleQueuedBookConversionProcessing(queuedBook);
     } catch (e) {
-      // No queued books
       _isProcessing = false;
     }
+  }
+
+  void _handleQueuedBookConversionProcessing(Book queuedBook) async {
+    final receivePort = ReceivePort();
+    final rootIsolateToken = RootIsolateToken.instance;
+    if (rootIsolateToken == null) throw Exception("Failed to get RootIsolateToken");
+    await Isolate.spawn(
+        _conversionIsolate, [receivePort.sendPort, queuedBook, rootIsolateToken]);
+
+    receivePort.listen((data) {
+      if (data is double) {
+        _databaseService.updateBookStatus(queuedBook.id, ConversionStatus.CONVERTING,progress: data);
+      } else if (data is int) {
+        _databaseService.updateBookStatus(queuedBook.id, ConversionStatus.COMPLETED, progress: 1.0, totalPages: data);
+        _isProcessing = false;
+        processQueue();
+      } else if (data is String) {
+        _databaseService.updateBookStatus(queuedBook.id, ConversionStatus.FAILED);
+        _isProcessing = false;
+        processQueue();
+      }
+    });
   }
 
   static void _conversionIsolate(List<dynamic> args) async {
@@ -76,26 +70,8 @@ class BackgroundConversionService {
     try {
       final fullText = await docLoader.loadPdfTextFromPath(book.filePath);
       final sanitizedText = TextSanitizer(fullText).sanitizedText;
-      // --- REPLACEMENT PAGINATION LOGIC ---
-      // This logic avoids using TextPainter and the Flutter engine.
-      const int charsPerPage = 1500; // Approximate characters per page.
-      final List<String> pages = [];
-      int startIndex = 0;
-      while (startIndex < sanitizedText.length) {
-        int endIndex = startIndex + charsPerPage;
-        if (endIndex > sanitizedText.length) {
-          endIndex = sanitizedText.length;
-        } else {
-          // Try to end on a whitespace to avoid splitting words.
-          int lastSpace = sanitizedText.lastIndexOf(RegExp(r'\s'), endIndex);
-          if (lastSpace > startIndex) {
-            endIndex = lastSpace;
-          }
-        }
-        pages.add(sanitizedText.substring(startIndex, endIndex).trim());
-        startIndex = endIndex;
-      }
-      // --- END OF REPLACEMENT LOGIC ---
+
+      final List<String> pages = _approximateCharsPerPage(sanitizedText);
 
       int totalPages = pages.length;
 
@@ -107,5 +83,25 @@ class BackgroundConversionService {
     } catch (e) {
       sendPort.send(e.toString());
     }
+  }
+
+  static List<String> _approximateCharsPerPage(String sanitizedText, {int charsPerPage = 1500}) {
+    final List<String> pages = [];
+    int startIndex = 0;
+    while (startIndex < sanitizedText.length) {
+      int endIndex = startIndex + charsPerPage;
+      if (endIndex > sanitizedText.length) {
+        endIndex = sanitizedText.length;
+      } else {
+        // Try to end on a whitespace to avoid splitting words.
+        int lastSpace = sanitizedText.lastIndexOf(RegExp(r'\s'), endIndex);
+        if (lastSpace > startIndex) {
+          endIndex = lastSpace;
+        }
+      }
+      pages.add(sanitizedText.substring(startIndex, endIndex).trim());
+      startIndex = endIndex;
+    }
+    return pages;
   }
 }
