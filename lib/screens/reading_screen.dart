@@ -1,16 +1,15 @@
 import 'package:bionic_reader/models/book.dart';
 import 'package:bionic_reader/models/conversion_status.dart';
+import 'package:bionic_reader/services/bionic_text_converter_service.dart';
 import 'package:bionic_reader/services/book_cache_service.dart';
 import 'package:bionic_reader/services/database_service.dart';
 import 'package:bionic_reader/widgets/custom_app_bar.dart';
 import 'package:bionic_reader/widgets/custom_drawer.dart';
 import 'package:bionic_reader/widgets/home/text_pagination_actions.dart';
 import 'package:bionic_reader/widgets/swipe_detector.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../mixins/reading_screen_styles.dart';
 import '../service_locator.dart';
-import '../services/bionic_text_converter.dart';
 
 class ReadingScreen extends StatefulWidget {
   final String bookId;
@@ -21,7 +20,7 @@ class ReadingScreen extends StatefulWidget {
 }
 
 class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles {
-  // --- State Variables ---
+
   bool _isLoading = true;
   String _statusMessage = 'Loading...';
   int _currentPageIndex = 0;
@@ -31,6 +30,7 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
 
   final BookCacheService _bookCacheService = locator<BookCacheService>();
   final DatabaseService _databaseService = locator<DatabaseService>();
+
 
   @override
   void initState() {
@@ -64,7 +64,7 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
       _isLoading = false;
       _statusMessage = '';
     });
-    _convertPageInBackground(_currentPageIndex);
+    convertPageToBionicText(_currentPageIndex);
   }
 
   @override
@@ -81,13 +81,48 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
         child: Center(
           child: _isLoading
               ? ReadingScreenStyles.loadingSpinner(60.0, context)
-              : _buildDocumentContent(),
+              : _buildReadingPageContent(),
         ),
       ),
     );
   }
 
-  Widget _convertedTextSpans(List<TextSpan> spans) {
+  List<Widget>? _buildPaginationActions() {
+    final actionsHelper = PaginationActions(
+      _pages,
+      _isLoading,
+      _currentPageIndex,
+      onPreviousPage: _previousPage,
+      onNextPage: _nextPage,
+    );
+    return actionsHelper.buildPaginationActions();
+  }
+
+  Widget _buildReadingPageContent() {
+    if (_pages.isNotEmpty) {
+      final List<TextSpan> bionicTextSpans = convertPageToBionicText(_currentPageIndex);
+      return _displayPageTextSpans(bionicTextSpans);
+    }
+    if (_book != null && _book!.conversionStatus != ConversionStatus.COMPLETED) {
+      return _stillConvertingSpinner();
+    }
+    return _displayStatusFallback();
+
+  }
+
+  List<TextSpan> convertPageToBionicText(int pageIndex) {
+    List<TextSpan>? result = _bionicPagesCache[pageIndex];
+    if (result == null) {
+      final bionicConverterService = BionicTextConverterService(baseTextStyle, boldTextStyle);
+      result = bionicConverterService.convert(_pages[pageIndex]);
+      setState(() {
+        _bionicPagesCache[pageIndex] = result!;
+      });
+    }
+    return result;
+  }
+
+  Widget _displayPageTextSpans(List<TextSpan> spans) {
     return SingleChildScrollView(
       child: Padding(
         padding: paddingLTRB,
@@ -108,50 +143,6 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
     );
   }
 
-  List<Widget>? _buildPaginationActions() {
-    final actionsHelper = PaginationActions(
-      _pages,
-      _isLoading,
-      _currentPageIndex,
-      onPreviousPage: _previousPage,
-      onNextPage: _nextPage,
-    );
-    return actionsHelper.buildPaginationActions();
-  }
-
-  Widget _buildDocumentContent() {
-    if (_pages.isEmpty) {
-      if (_book != null && _book!.conversionStatus != ConversionStatus.COMPLETED) {
-        return _stillConvertingSpinner();
-      }
-      return _displayStatusFallback();
-    }
-
-    final List<TextSpan>? bionicSpans = _bionicPagesCache[_currentPageIndex];
-    if (bionicSpans == null) {
-      _convertPageInBackground(_currentPageIndex);
-      return _pageConvertingSpinner();
-    }
-    
-    return _convertedTextSpans(bionicSpans);
-  }
-
-  Future<void> _convertPageInBackground(int pageIndex) async {
-    if (_bionicPagesCache.containsKey(pageIndex) || _pages.isEmpty) return;
-
-    final payload = BionicConverterPayload(
-      _pages[pageIndex],
-      baseTextStyle,
-      boldTextStyle,
-    );
-    final bionicSpans = await compute(convertPageToBionicText, payload);
-    if (mounted) {
-      setState(() {
-        _bionicPagesCache[pageIndex] = bionicSpans;
-      });
-    }
-  }
-
    Widget _stillConvertingSpinner() {
     return Center(
       child: Column(
@@ -170,19 +161,6 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
     );
   }
 
-  Widget _pageConvertingSpinner() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ReadingScreenStyles.loadingSpinner(60.0, context),
-          const SizedBox(height: 16),
-          Text('Converting page ${_currentPageIndex + 1}...'),
-        ],
-      ),
-    );
-  }
-
   Widget _displayStatusFallback() {
     return Center(
       child: Text(
@@ -191,12 +169,6 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
         style: baseTextStyle,
       ),
     );
-  }
-
-  void _updateLastReadPage(int pageIndex) {
-    if (_book != null) {
-      _databaseService.updateBookLastReadPage(_book!.id, pageIndex);
-    }
   }
 
   void _nextPage() {
@@ -214,6 +186,12 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
         _currentPageIndex--;
         _updateLastReadPage(_currentPageIndex); // Save on page turn
       });
+    }
+  }
+
+  void _updateLastReadPage(int pageIndex) {
+    if (_book != null) {
+      _databaseService.updateBookLastReadPage(_book!.id, pageIndex);
     }
   }
 }

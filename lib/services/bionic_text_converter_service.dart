@@ -1,37 +1,18 @@
 import 'package:flutter/material.dart';
 
-
-class BionicConverterPayload {
-  final String pageText;
-  final TextStyle baseStyle;
-  final TextStyle boldStyle;
-
-  BionicConverterPayload(this.pageText, this.baseStyle, this.boldStyle);
-}
-
-// Top-level function for isolate
-List<TextSpan> convertPageToBionicText(BionicConverterPayload payload) {
-  final converter = BionicTextConverter(
-    baseStyle: payload.baseStyle,
-    boldStyle: payload.boldStyle,
-    fixateLength: 3,
-  );
-  return converter.convert(payload.pageText);
-}
-
 /// A utility class responsible for applying the Bionic Reading transformation
 /// to a plain text string, returning a list of TextSpans for RichText rendering.
 ///
-class BionicTextConverter {
-  final TextStyle baseStyle;
-  final TextStyle boldStyle;
+class BionicTextConverterService {
+  final TextStyle baseTextStyle;
+  final TextStyle boldTextStyle;
   final int fixateLength;
 
-  BionicTextConverter({
-    required this.baseStyle,
-    required this.boldStyle,
-    this.fixateLength = 3, // Number of initial characters to bold
-  });
+  BionicTextConverterService(
+    this.baseTextStyle,
+    this.boldTextStyle,
+  { this.fixateLength = 3} // Number of initial characters to bold
+  );
 
   /// Converts the input text string into a list of TextSpan widgets,
   /// bolding the first [fixateLength] characters of meaningful words.
@@ -47,10 +28,9 @@ class BionicTextConverter {
         continue;
       }
       final (:length, :boldLength) = getRegularAndBoldLengthFor(part);
-      spans.add(spanWithText(part.substring(0, boldLength), boldStyle));
-      if (length > boldLength) {
-        spans.add(spanWithText(part.substring(boldLength)));
-      }
+      spans.add(spanWithText(part.substring(0, boldLength), boldTextStyle));
+
+      if (length > boldLength) spans.add(spanWithText(part.substring(boldLength)));
     }
     return spans;
   }
@@ -63,17 +43,14 @@ class BionicTextConverter {
     for (final match in wordBoundary.allMatches(text)) {
       // 1. Add the non-match part (the word)
       final nonMatch = text.substring(current, match.start);
-      if (nonMatch.isNotEmpty) {
-        parts.add(nonMatch);
-      }
+      if (nonMatch.isNotEmpty) parts.add(nonMatch);
       // 2. Add the match part (the delimiter/space)
       parts.add(match.group(0)!);
       current = match.end;
     }
     // 3. Add any remaining text after the last match
-    if (current < text.length) {
-      parts.add(text.substring(current));
-    }
+    if (current < text.length) parts.add(text.substring(current));
+
     return (parts, wordBoundary);
   }
 
@@ -85,7 +62,7 @@ class BionicTextConverter {
   TextSpan spanWithText(String text, [TextStyle? style]) {
     return TextSpan(
       text: text,
-      style: style ?? baseStyle
+      style: style ?? baseTextStyle
     );
   }
 }
