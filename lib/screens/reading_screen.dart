@@ -2,7 +2,7 @@ import 'package:bionic_reader/models/book.dart';
 import 'package:bionic_reader/models/conversion_status.dart';
 import 'package:bionic_reader/services/bionic_text_converter_service.dart';
 import 'package:bionic_reader/services/book_cache_service.dart';
-import 'package:bionic_reader/services/database_service.dart';
+import 'package:bionic_reader/services/database/book_database_service.dart';
 import 'package:bionic_reader/widgets/custom_app_bar.dart';
 import 'package:bionic_reader/widgets/custom_drawer.dart';
 import 'package:bionic_reader/widgets/home/text_pagination_actions.dart';
@@ -29,7 +29,7 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
   Book? _book;
 
   final BookCacheService _bookCacheService = locator<BookCacheService>();
-  final DatabaseService _databaseService = locator<DatabaseService>();
+  final BookDatabaseService _bookDbService = locator<BookDatabaseService>();
 
 
   @override
@@ -39,7 +39,7 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
   }
 
   Future<void> _loadBook() async {
-    final books = await _databaseService.getAllBooks();
+    final books = await _bookDbService.getAllBooks();
     final book = books.firstWhere((b) => b.id == widget.bookId);
     setState(() {
       _book = book;
@@ -191,7 +191,7 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
 
   void _updateLastReadPage(int pageIndex) {
     if (_book != null) {
-      _databaseService.updateBookLastReadPage(_book!.id, pageIndex);
+      _bookDbService.updateBookLastReadPage(_book!.id, pageIndex);
     }
   }
 }

@@ -1,13 +1,24 @@
 import 'package:bionic_reader/bloc/library_cubit.dart';
 import 'package:bionic_reader/notifiers/theme_notifier.dart';
 import 'package:bionic_reader/service_locator.dart';
+import 'package:bionic_reader/services/database/database_provider.dart';
+import 'package:bionic_reader/services/database/database_schema.dart';
 import 'package:bionic_reader/utils/navigation_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
-void main() {
+void main() async {
+  // Ensure that Flutter bindings are initialized before calling async code.
+  WidgetsFlutterBinding.ensureInitialized();
+  // Initialize services
   setupLocator();
+  // Initialize the database
+  await locator<DatabaseProvider>().init(
+    dbName: 'bionic_reader.db',
+    tableCreationSqls: allTables,
+  );
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier(locator()),

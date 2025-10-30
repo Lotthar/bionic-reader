@@ -6,21 +6,21 @@ import 'package:bionic_reader/models/book.dart';
 import 'package:bionic_reader/models/conversion_status.dart';
 import 'package:bionic_reader/services/background_conversion_service.dart';
 import 'package:bionic_reader/services/book_cache_service.dart';
-import 'package:bionic_reader/services/database_service.dart';
+import 'package:bionic_reader/services/database/book_database_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 class LibraryCubit extends Cubit<LibraryState> {
-  final DatabaseService _databaseService;
+  final BookDatabaseService _bookDatabaseService;
   final BackgroundConversionService _conversionService;
   final BookCacheService _bookCacheService;
   late final StreamSubscription<List<Book>> _bookSubscription;
 
-  LibraryCubit(this._databaseService, this._conversionService, this._bookCacheService)
+  LibraryCubit(this._bookDatabaseService, this._conversionService, this._bookCacheService)
       : super(const LibraryState()) {
-    _bookSubscription = _databaseService.watchAllBooks().listen((books) {
+    _bookSubscription = _bookDatabaseService.watchAllBooks().listen((books) {
       emit(state.copyWith(status: LibraryStatus.success, books: books));
     });
   }
@@ -49,12 +49,12 @@ class LibraryCubit extends Cubit<LibraryState> {
       title: p.basenameWithoutExtension(filePath),
       conversionStatus: ConversionStatus.QUEUED,
     );
-    await _databaseService.addBook(book);
+    await _bookDatabaseService.addBook(book);
     _conversionService.processQueue(screenSize);
   }
 
   Future<void> deleteBook(String id) async {
-    await _databaseService.deleteBook(id);
+    await _bookDatabaseService.deleteBook(id);
     await _bookCacheService.deleteBookCache(id);
   }
 

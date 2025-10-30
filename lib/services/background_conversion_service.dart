@@ -5,13 +5,14 @@ import 'package:bionic_reader/models/book.dart';
 import 'package:bionic_reader/models/book_metadata.dart';
 import 'package:bionic_reader/models/conversion_status.dart';
 import 'package:bionic_reader/services/book_cache_service.dart';
+import 'package:bionic_reader/services/database/book_database_service.dart';
 import 'package:bionic_reader/services/cover_image_service.dart';
-import 'package:bionic_reader/services/database_service.dart';
 import 'package:bionic_reader/services/document_loader_service.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
+import '../service_locator.dart';
 import '../utils/text_sanitization.dart';
 
 class BackgroundConversionService {
@@ -20,18 +21,18 @@ class BackgroundConversionService {
   factory BackgroundConversionService() => _instance;
   BackgroundConversionService._internal();
 
-  final _databaseService = DatabaseService();
+  final _bookDatabaseService = locator<BookDatabaseService>();
   bool _isProcessing = false;
 
   Future<void> processQueue([Size? screenSize]) async {
     if (_isProcessing) return;
     try {
-      final books = await _databaseService.getAllBooks();
+      final books = await _bookDatabaseService.getAllBooks();
       final queuedBook = books.firstWhere(
         (book) => book.conversionStatus == ConversionStatus.QUEUED,
       );
       _isProcessing = true;
-      await _databaseService.updateBookStatus(
+      await _bookDatabaseService.updateBookStatus(
           queuedBook.id, ConversionStatus.CONVERTING);
 
       _handleQueuedBookConversionProcessing(queuedBook, screenSize);
@@ -49,17 +50,17 @@ class BackgroundConversionService {
 
     receivePort.listen((data) {
       if (data is BookMetadata) {
-        _databaseService.updateBookDetails(queuedBook.id, data);
+        _bookDatabaseService.updateBookDetails(queuedBook.id, data);
       } else if (data is String && data.startsWith('coverPath:')) {
-        _databaseService.updateBookCover(queuedBook.id, data.substring(10));
+        _bookDatabaseService.updateBookCover(queuedBook.id, data.substring(10));
       } else if (data is double) {
-        _databaseService.updateBookStatus(queuedBook.id, ConversionStatus.CONVERTING,progress: data);
+        _bookDatabaseService.updateBookStatus(queuedBook.id, ConversionStatus.CONVERTING,progress: data);
       } else if (data is int) {
-        _databaseService.updateBookStatus(queuedBook.id, ConversionStatus.COMPLETED, progress: 1.0, totalPages: data);
+        _bookDatabaseService.updateBookStatus(queuedBook.id, ConversionStatus.COMPLETED, progress: 1.0, totalPages: data);
         _isProcessing = false;
         processQueue();
       } else if (data is String) {
-        _databaseService.updateBookStatus(queuedBook.id, ConversionStatus.FAILED);
+        _bookDatabaseService.updateBookStatus(queuedBook.id, ConversionStatus.FAILED);
         _isProcessing = false;
         processQueue();
       }
@@ -79,7 +80,7 @@ class BackgroundConversionService {
     final coverImageService = CoverImageService();
 
     try {
-      final Uint8List? imageBytes = await coverImageService.extractCoverImage(book.filePath);
+      final imageBytes = await coverImageService.extractCoverImage(book.filePath);
       if (imageBytes != null) {
         final Directory appDocDir = await getApplicationDocumentsDirectory();
         final String coverPath = p.join(appDocDir.path, 'covers', '${book.id}.png');
@@ -118,7 +119,7 @@ class BackgroundConversionService {
   static List<String> _approximateCharsPerPage(String sanitizedText, {Size? screenSize}) {
     int charsPerPage;
     if (screenSize != null) {
-      charsPerPage = (screenSize.width * screenSize.height / 300).round();
+      charsPerPage = (screenSize.width * screenSize.height / 290).round();
     } else {
       charsPerPage = 1500;
     }
