@@ -6,7 +6,6 @@ import 'package:bionic_reader/services/database/book_database_service.dart';
 import 'package:bionic_reader/theme/app_theme.dart';
 import 'package:bionic_reader/widgets/custom_app_bar.dart';
 import 'package:bionic_reader/widgets/custom_drawer.dart';
-import 'package:bionic_reader/widgets/home/text_pagination_actions.dart';
 import 'package:bionic_reader/widgets/loading_spinner.dart';
 import 'package:bionic_reader/widgets/swipe_detector.dart';
 import 'package:flutter/material.dart';
@@ -71,8 +70,22 @@ class _ReadingScreenState extends State<ReadingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(
-        title: _book?.title ?? 'Bionic Reader',
-        actions: _buildPaginationActions(),
+        title: Text(
+            _book?.title ?? 'Bionic Reader',
+            style: TextStyle(
+                fontSize: 20,
+                overflow: TextOverflow.fade
+            )
+        ),
+        actions: [
+          const SizedBox(width: 10.0),
+          Center(
+          child: Text(
+            'Page ${_currentPageIndex + 1} of ${_pages.length}',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+          const SizedBox(width: 8.0)],
       ),
       drawer: const CustomDrawer(),
       body: SwipeDetector(
@@ -86,17 +99,6 @@ class _ReadingScreenState extends State<ReadingScreen> {
     );
   }
 
-  List<Widget>? _buildPaginationActions() {
-    final actionsHelper = PaginationActions(
-      _pages,
-      _isLoading,
-      _currentPageIndex,
-      onPreviousPage: _previousPage,
-      onNextPage: _nextPage,
-    );
-    return actionsHelper.buildPaginationActions();
-  }
-
   Widget _buildReadingPageContent() {
     if (_pages.isNotEmpty) {
       final List<TextSpan> bionicTextSpans =
@@ -104,7 +106,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
       return _displayPageTextSpans(bionicTextSpans);
     }
     if (_book != null && _book!.conversionStatus != ConversionStatus.COMPLETED) {
-      return _stillConvertingSpinner();
+      return _stillConvertingFallback();
     }
     return _displayStatusFallback();
   }
@@ -145,7 +147,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
     );
   }
 
-  Widget _stillConvertingSpinner() {
+  Widget _stillConvertingFallback() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

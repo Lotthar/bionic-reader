@@ -11,7 +11,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Settings',
+        title: Text('Settings'),
       ),
       drawer: const CustomDrawer(),
       body: SingleChildScrollView(

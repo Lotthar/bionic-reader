@@ -1,5 +1,6 @@
 
 import 'dart:io';
+import 'package:bionic_reader/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import '../../models/book.dart';
 import '../../models/conversion_status.dart';
@@ -50,6 +51,8 @@ class BookGridItem extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     return Card(
       clipBehavior: Clip.antiAlias,
+      color: AppTheme.isDarkMode(context) ?
+        Colors.black54 : Colors.grey.shade200,
       child: InkWell(
         onTap: () {
           if (book.conversionStatus == ConversionStatus.COMPLETED) {

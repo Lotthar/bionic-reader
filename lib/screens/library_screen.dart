@@ -3,6 +3,7 @@ import 'package:bionic_reader/bloc/library_state.dart';
 import 'package:bionic_reader/models/book.dart';
 import 'package:bionic_reader/widgets/custom_app_bar.dart';
 import 'package:bionic_reader/widgets/custom_drawer.dart';
+import 'package:bionic_reader/widgets/loading_spinner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -17,13 +18,13 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
-  bool _isGridView = false;
+  bool _isGridView = true;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Library',
+        title: Text('Library'),
         actions: [
           IconButton(
             icon: Icon(_isGridView ? Icons.view_list : Icons.view_module),
@@ -96,7 +97,7 @@ class LibraryBody extends StatelessWidget {
     return BlocBuilder<LibraryCubit, LibraryState>(
       builder: (context, state) {
         if (state.status == LibraryStatus.loading || state.status == LibraryStatus.initial) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: LoadingSpinner(size: 20.0));
         }
         if (state.status == LibraryStatus.failure) {
           return Center(child: Text(state.errorMessage ?? 'An error occurred'));
