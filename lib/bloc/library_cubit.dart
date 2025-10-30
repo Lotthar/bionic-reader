@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:bionic_reader/bloc/library_state.dart';
 import 'package:bionic_reader/models/book.dart';
@@ -24,7 +25,7 @@ class LibraryCubit extends Cubit<LibraryState> {
     });
   }
 
-  Future<void> pickAndAddNewBook() async {
+  Future<void> pickAndAddNewBook(Size screenSize) async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -32,7 +33,7 @@ class LibraryCubit extends Cubit<LibraryState> {
       );
 
       if (result != null && result.files.single.path != null) {
-        await addNewBook(result.files.single.path!);
+        await addNewBook(result.files.single.path!, screenSize);
       }
     } catch (e) {
       emit(state.copyWith(
@@ -41,7 +42,7 @@ class LibraryCubit extends Cubit<LibraryState> {
     }
   }
 
-  Future<void> addNewBook(String filePath) async {
+  Future<void> addNewBook(String filePath, Size screenSize) async {
     final book = Book(
       id: const Uuid().v4(),
       filePath: filePath,
@@ -49,7 +50,7 @@ class LibraryCubit extends Cubit<LibraryState> {
       conversionStatus: ConversionStatus.QUEUED,
     );
     await _databaseService.addBook(book);
-    _conversionService.processQueue();
+    _conversionService.processQueue(screenSize);
   }
 
   Future<void> deleteBook(String id) async {

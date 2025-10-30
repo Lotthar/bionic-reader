@@ -9,7 +9,6 @@ import 'package:bionic_reader/services/cover_image_service.dart';
 import 'package:bionic_reader/services/database_service.dart';
 import 'package:bionic_reader/services/document_loader_service.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_pdf_text/flutter_pdf_text.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -24,7 +23,7 @@ class BackgroundConversionService {
   final _databaseService = DatabaseService();
   bool _isProcessing = false;
 
-  Future<void> processQueue() async {
+  Future<void> processQueue([Size? screenSize]) async {
     if (_isProcessing) return;
     try {
       final books = await _databaseService.getAllBooks();
@@ -35,18 +34,18 @@ class BackgroundConversionService {
       await _databaseService.updateBookStatus(
           queuedBook.id, ConversionStatus.CONVERTING);
 
-      _handleQueuedBookConversionProcessing(queuedBook);
+      _handleQueuedBookConversionProcessing(queuedBook, screenSize);
     } catch (e) {
       _isProcessing = false;
     }
   }
 
-  void _handleQueuedBookConversionProcessing(Book queuedBook) async {
+  void _handleQueuedBookConversionProcessing(Book queuedBook, Size? screenSize) async {
     final receivePort = ReceivePort();
     final rootIsolateToken = RootIsolateToken.instance;
     if (rootIsolateToken == null) throw Exception("Failed to get RootIsolateToken");
     await Isolate.spawn(
-        _conversionIsolate, [receivePort.sendPort, queuedBook, rootIsolateToken]);
+        _conversionIsolate, [receivePort.sendPort, queuedBook, rootIsolateToken, screenSize]);
 
     receivePort.listen((data) {
       if (data is BookMetadata) {
@@ -71,21 +70,39 @@ class BackgroundConversionService {
     SendPort sendPort = args[0];
     Book book = args[1];
     RootIsolateToken rootIsolateToken = args[2];
+    Size? screenSize = args[3];
+    
     BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken);
     
+    final docLoader = DocumentLoaderService();
     final cacheService = BookCacheService();
+    final coverImageService = CoverImageService();
+
     try {
-      final bookCoverImagePath = await _extractBookCoverImage(book);
-      if(bookCoverImagePath != null) {
-        sendPort.send('coverPath:$bookCoverImagePath');
+      final Uint8List? imageBytes = await coverImageService.extractCoverImage(book.filePath);
+      if (imageBytes != null) {
+        final Directory appDocDir = await getApplicationDocumentsDirectory();
+        final String coverPath = p.join(appDocDir.path, 'covers', '${book.id}.png');
+        final File coverFile = File(coverPath);
+        await coverFile.create(recursive: true);
+        await coverFile.writeAsBytes(imageBytes);
+        sendPort.send('coverPath:$coverPath');
       }
-      final (:pdfDoc, :metaData) = await _extractBookDataFromFile(book);
-      sendPort.send(metaData);
 
-      final fileText = await pdfDoc.text;
-      final sanitizedText = TextSanitizer(fileText).sanitizedText;
+      final pdfDoc = await docLoader.loadPdfDocFromPath(book.filePath);
+      
+      final info = pdfDoc.info;
+      final metadata = BookMetadata(
+        title: info.title ?? book.title,
+        author: info.author,
+      );
+      sendPort.send(metadata);
 
-      final List<String> pages = _approximateCharsPerPage(sanitizedText);
+      final fullText = await pdfDoc.text;
+      final sanitizedText = TextSanitizer(fullText).sanitizedText;
+
+      final List<String> pages = _approximateCharsPerPage(sanitizedText, screenSize: screenSize);
+
       int totalPages = pages.length;
 
       for (int i = 0; i < totalPages; i++) {
@@ -98,30 +115,13 @@ class BackgroundConversionService {
     }
   }
 
-  static Future<String?> _extractBookCoverImage(Book book) async {
-    final coverImageService = CoverImageService();
-    final Uint8List? imageBytes = await coverImageService.extractCoverImage(book.filePath);
-    if (imageBytes == null) return null;
-    final Directory appDocDir = await getApplicationDocumentsDirectory();
-    final String coverPath = p.join(appDocDir.path, 'covers', '${book.id}.png');
-    final File coverFile = File(coverPath);
-    await coverFile.create(recursive: true);
-    await coverFile.writeAsBytes(imageBytes);
-    return coverPath;
-  }
-
-  static Future<({PDFDoc pdfDoc, BookMetadata metaData})> _extractBookDataFromFile(Book book) async {
-    final docLoader = DocumentLoaderService();
-    final pdfDoc = await docLoader.loadPdfDocFromPath(book.filePath);
-    final fileInfo = pdfDoc.info;
-    final metaData = BookMetadata(
-      title: fileInfo.title ?? book.title,
-      author: fileInfo.author,
-    );
-    return (pdfDoc: pdfDoc, metaData: metaData);
-  }
-
-  static List<String> _approximateCharsPerPage(String sanitizedText, {int charsPerPage = 1500}) {
+  static List<String> _approximateCharsPerPage(String sanitizedText, {Size? screenSize}) {
+    int charsPerPage;
+    if (screenSize != null) {
+      charsPerPage = (screenSize.width * screenSize.height / 300).round();
+    } else {
+      charsPerPage = 1500;
+    }
     final List<String> pages = [];
     int startIndex = 0;
     while (startIndex < sanitizedText.length) {
@@ -129,7 +129,6 @@ class BackgroundConversionService {
       if (endIndex > sanitizedText.length) {
         endIndex = sanitizedText.length;
       } else {
-        // Try to end on a whitespace to avoid splitting words.
         int lastSpace = sanitizedText.lastIndexOf(RegExp(r'\s'), endIndex);
         if (lastSpace > startIndex) {
           endIndex = lastSpace;

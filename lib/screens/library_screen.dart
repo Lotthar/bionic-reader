@@ -56,7 +56,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.read<LibraryCubit>().pickAndAddNewBook(),
+        onPressed: () {
+          final screenSize = MediaQuery.of(context).size;
+          context.read<LibraryCubit>().pickAndAddNewBook(screenSize);
+        },
         tooltip: 'Add Book',
         child: const Icon(Icons.add),
       ),
@@ -186,7 +189,6 @@ class BookGridItem extends StatelessWidget {
                       ),
                     ),
             ),
-            const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
               child: Text(
