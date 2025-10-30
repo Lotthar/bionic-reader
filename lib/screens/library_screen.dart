@@ -186,6 +186,7 @@ class BookGridItem extends StatelessWidget {
                       ),
                     ),
             ),
+            const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
               child: Text(
@@ -205,7 +206,6 @@ class BookGridItem extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-            const Spacer(),
             if (book.conversionStatus == ConversionStatus.CONVERTING)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),

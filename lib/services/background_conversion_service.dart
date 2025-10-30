@@ -9,6 +9,7 @@ import 'package:bionic_reader/services/cover_image_service.dart';
 import 'package:bionic_reader/services/database_service.dart';
 import 'package:bionic_reader/services/document_loader_service.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_pdf_text/flutter_pdf_text.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -70,32 +71,21 @@ class BackgroundConversionService {
     SendPort sendPort = args[0];
     Book book = args[1];
     RootIsolateToken rootIsolateToken = args[2];
-    
     BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken);
     
-    final docLoader = DocumentLoaderService();
     final cacheService = BookCacheService();
-
     try {
       final bookCoverImagePath = await _extractBookCoverImage(book);
       if(bookCoverImagePath != null) {
         sendPort.send('coverPath:$bookCoverImagePath');
       }
+      final (:pdfDoc, :metaData) = await _extractBookDataFromFile(book);
+      sendPort.send(metaData);
 
-      final pdfDoc = await docLoader.loadPdfDocFromPath(book.filePath);
-      
-      final info = pdfDoc.info;
-      final metadata = BookMetadata(
-        title: info.title ?? book.title,
-        author: info.author,
-      );
-      sendPort.send(metadata);
-
-      final fullText = await pdfDoc.text;
-      final sanitizedText = TextSanitizer(fullText).sanitizedText;
+      final fileText = await pdfDoc.text;
+      final sanitizedText = TextSanitizer(fileText).sanitizedText;
 
       final List<String> pages = _approximateCharsPerPage(sanitizedText);
-
       int totalPages = pages.length;
 
       for (int i = 0; i < totalPages; i++) {
@@ -118,6 +108,17 @@ class BackgroundConversionService {
     await coverFile.create(recursive: true);
     await coverFile.writeAsBytes(imageBytes);
     return coverPath;
+  }
+
+  static Future<({PDFDoc pdfDoc, BookMetadata metaData})> _extractBookDataFromFile(Book book) async {
+    final docLoader = DocumentLoaderService();
+    final pdfDoc = await docLoader.loadPdfDocFromPath(book.filePath);
+    final fileInfo = pdfDoc.info;
+    final metaData = BookMetadata(
+      title: fileInfo.title ?? book.title,
+      author: fileInfo.author,
+    );
+    return (pdfDoc: pdfDoc, metaData: metaData);
   }
 
   static List<String> _approximateCharsPerPage(String sanitizedText, {int charsPerPage = 1500}) {
