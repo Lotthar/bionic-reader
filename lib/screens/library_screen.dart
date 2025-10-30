@@ -208,6 +208,17 @@ class BookGridItem extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+            if (book.conversionStatus == ConversionStatus.COMPLETED)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                'Left at: ${(book.lastReadPage + 1).toString()} of ${book.totalPages.toString()}',
+                style: textTheme.bodySmall?.copyWith(
+                    fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.inversePrimary),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             if (book.conversionStatus == ConversionStatus.CONVERTING)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
