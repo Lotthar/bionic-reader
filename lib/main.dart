@@ -10,7 +10,7 @@ void main() {
   setupLocator();
   runApp(
     ChangeNotifierProvider(
-      create: (_) => ThemeNotifier(),
+      create: (_) => ThemeNotifier(locator()),
       child: const BionicReaderApp(),
     ),
   );
