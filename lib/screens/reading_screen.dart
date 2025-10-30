@@ -3,12 +3,14 @@ import 'package:bionic_reader/models/conversion_status.dart';
 import 'package:bionic_reader/services/bionic_text_converter_service.dart';
 import 'package:bionic_reader/services/book_cache_service.dart';
 import 'package:bionic_reader/services/database/book_database_service.dart';
+import 'package:bionic_reader/theme/app_theme.dart';
 import 'package:bionic_reader/widgets/custom_app_bar.dart';
 import 'package:bionic_reader/widgets/custom_drawer.dart';
 import 'package:bionic_reader/widgets/home/text_pagination_actions.dart';
+import 'package:bionic_reader/widgets/loading_spinner.dart';
 import 'package:bionic_reader/widgets/swipe_detector.dart';
 import 'package:flutter/material.dart';
-import '../mixins/reading_screen_styles.dart';
+
 import '../service_locator.dart';
 
 class ReadingScreen extends StatefulWidget {
@@ -19,8 +21,7 @@ class ReadingScreen extends StatefulWidget {
   State<ReadingScreen> createState() => _ReadingScreenState();
 }
 
-class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles {
-
+class _ReadingScreenState extends State<ReadingScreen> {
   bool _isLoading = true;
   String _statusMessage = 'Loading...';
   int _currentPageIndex = 0;
@@ -30,7 +31,6 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
 
   final BookCacheService _bookCacheService = locator<BookCacheService>();
   final BookDatabaseService _bookDbService = locator<BookDatabaseService>();
-
 
   @override
   void initState() {
@@ -43,7 +43,7 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
     final book = books.firstWhere((b) => b.id == widget.bookId);
     setState(() {
       _book = book;
-      _currentPageIndex = book.lastReadPage; // Start at the last read page
+      _currentPageIndex = book.lastReadPage;
     });
     _loadPages();
   }
@@ -79,9 +79,8 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
         onSwipeLeft: _nextPage,
         onSwipeRight: _previousPage,
         child: Center(
-          child: _isLoading
-              ? ReadingScreenStyles.loadingSpinner(60.0, context)
-              : _buildReadingPageContent(),
+          child:
+              _isLoading ? const LoadingSpinner() : _buildReadingPageContent(),
         ),
       ),
     );
@@ -100,20 +99,23 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
 
   Widget _buildReadingPageContent() {
     if (_pages.isNotEmpty) {
-      final List<TextSpan> bionicTextSpans = convertPageToBionicText(_currentPageIndex);
+      final List<TextSpan> bionicTextSpans =
+          convertPageToBionicText(_currentPageIndex);
       return _displayPageTextSpans(bionicTextSpans);
     }
     if (_book != null && _book!.conversionStatus != ConversionStatus.COMPLETED) {
       return _stillConvertingSpinner();
     }
     return _displayStatusFallback();
-
   }
 
   List<TextSpan> convertPageToBionicText(int pageIndex) {
     List<TextSpan>? result = _bionicPagesCache[pageIndex];
     if (result == null) {
-      final bionicConverterService = BionicTextConverterService(baseTextStyle, boldTextStyle);
+      final bionicConverterService = BionicTextConverterService(
+        Theme.of(context).xTextStyles.body,
+        Theme.of(context).xTextStyles.bodyBold,
+      );
       result = bionicConverterService.convert(_pages[pageIndex]);
       setState(() {
         _bionicPagesCache[pageIndex] = result!;
@@ -125,16 +127,16 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
   Widget _displayPageTextSpans(List<TextSpan> spans) {
     return SingleChildScrollView(
       child: Padding(
-        padding: paddingLTRB,
+        padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 60.0),
         child: Container(
           constraints: const BoxConstraints(
-            maxWidth: ReadingScreenStyles.maxContentWidth,
+            maxWidth: 700.0,
           ),
           alignment: Alignment.topLeft,
           child: RichText(
             textAlign: TextAlign.start,
             text: TextSpan(
-              style: baseTextStyle,
+              style: Theme.of(context).xTextStyles.body,
               children: spans,
             ),
           ),
@@ -143,12 +145,12 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
     );
   }
 
-   Widget _stillConvertingSpinner() {
+  Widget _stillConvertingSpinner() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ReadingScreenStyles.loadingSpinner(60.0, context),
+          const LoadingSpinner(),
           const SizedBox(height: 16),
           const Text('Book is still being converted...'),
           const SizedBox(height: 8),
@@ -166,7 +168,7 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
       child: Text(
         _statusMessage,
         textAlign: TextAlign.center,
-        style: baseTextStyle,
+        style: Theme.of(context).xTextStyles.body,
       ),
     );
   }
@@ -175,7 +177,7 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
     if (_currentPageIndex < _pages.length - 1) {
       setState(() {
         _currentPageIndex++;
-        _updateLastReadPage(_currentPageIndex); // Save on page turn
+        _updateLastReadPage(_currentPageIndex);
       });
     }
   }
@@ -184,7 +186,7 @@ class _ReadingScreenState extends State<ReadingScreen> with ReadingScreenStyles 
     if (_currentPageIndex > 0) {
       setState(() {
         _currentPageIndex--;
-        _updateLastReadPage(_currentPageIndex); // Save on page turn
+        _updateLastReadPage(_currentPageIndex);
       });
     }
   }

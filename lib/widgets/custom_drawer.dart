@@ -23,7 +23,7 @@ class CustomDrawer extends StatelessWidget {
               ),
             ),
           ),
-          ...Navigation.listTilesFromRoutes(context)
+          ...Navigation.drawerRouteListTiles(context)
         ],
       ),
     );

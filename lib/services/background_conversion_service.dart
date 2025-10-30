@@ -119,7 +119,7 @@ class BackgroundConversionService {
   static List<String> _approximateCharsPerPage(String sanitizedText, {Size? screenSize}) {
     int charsPerPage;
     if (screenSize != null) {
-      charsPerPage = (screenSize.width * screenSize.height / 290).round();
+      charsPerPage = (screenSize.width * screenSize.height / 250).round();
     } else {
       charsPerPage = 1500;
     }

@@ -30,7 +30,7 @@ class Navigation {
     };
   }
 
-  static List<Widget> listTilesFromRoutes(BuildContext context) {
+  static List<Widget> drawerRouteListTiles(BuildContext context) {
       return Routes.values.map((route) {
         return ListTile(
           leading: route.icon,
@@ -39,6 +39,15 @@ class Navigation {
             Navigator.pushReplacementNamed(context, route.path);
           });
       }).toList();
+  }
+
+  static void goToRoute(BuildContext context, Widget route) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => route,
+      ),
+    );
   }
 
 }
