@@ -79,6 +79,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
         ),
         actions: [
           const SizedBox(width: 10.0),
+          if(!_isLoading)
           Center(
           child: Text(
             'Page ${_currentPageIndex + 1} of ${_pages.length}',
@@ -115,8 +116,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
     List<TextSpan>? result = _bionicPagesCache[pageIndex];
     if (result == null) {
       final bionicConverterService = BionicTextConverterService(
-        Theme.of(context).xTextStyles.body,
-        Theme.of(context).xTextStyles.bodyBold,
+        context.appTextStyles.body,
+        context.appTextStyles.bodyBold,
       );
       result = bionicConverterService.convert(_pages[pageIndex]);
       setState(() {
@@ -138,7 +139,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
           child: RichText(
             textAlign: TextAlign.start,
             text: TextSpan(
-              style: Theme.of(context).xTextStyles.body,
+              style: context.appTextStyles.body,
               children: spans,
             ),
           ),
@@ -170,7 +171,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
       child: Text(
         _statusMessage,
         textAlign: TextAlign.center,
-        style: Theme.of(context).xTextStyles.body,
+        style: context.appTextStyles.body,
       ),
     );
   }

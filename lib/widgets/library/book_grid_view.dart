@@ -51,8 +51,7 @@ class BookGridItem extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     return Card(
       clipBehavior: Clip.antiAlias,
-      color: AppTheme.isDarkMode(context) ?
-        Colors.black54 : Colors.grey.shade200,
+      color: Theme.of(context).colorScheme.inversePrimary,
       child: InkWell(
         onTap: () {
           if (book.conversionStatus == ConversionStatus.COMPLETED) {
@@ -103,8 +102,10 @@ class BookGridItem extends StatelessWidget {
                 child: Text(
                   'Left at: ${(book.lastReadPage + 1).toString()} of ${book.totalPages.toString()}',
                   style: textTheme.bodySmall?.copyWith(
-                      fontStyle: FontStyle.italic, fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.inversePrimary),
+                      fontStyle: FontStyle.italic,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.tertiary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

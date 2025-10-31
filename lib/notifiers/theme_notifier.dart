@@ -1,5 +1,6 @@
 import 'package:bionic_reader/services/settings_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 class ThemeNotifier with ChangeNotifier {
   final SettingsService _settingsService;
@@ -13,6 +14,15 @@ class ThemeNotifier with ChangeNotifier {
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
+
+  /// Determines if the application is currently in dark mode.
+  /// Handles the 'system' theme mode by checking the platform's brightness.
+  bool isDarkMode(BuildContext context) {
+    if (_themeMode == ThemeMode.system) {
+      return SchedulerBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
+    }
+    return _themeMode == ThemeMode.dark;
+  }
 
   set themeMode(ThemeMode mode) {
     _themeMode = mode;

@@ -1,18 +1,22 @@
+import 'package:bionic_reader/notifiers/theme_notifier.dart';
 import 'package:bionic_reader/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-/// Extension to provide easy access to custom app text styles.
-extension AppThemeExtension on ThemeData {
-  /// Usage: Theme.of(context).xTextStyles.body
-  AppTextStyles get xTextStyles => extension<AppTextStyles>()!;
+/// Extension to provide easy access to custom app theme properties.
+extension AppThemeExtension on BuildContext {
+  /// Provides easy access to custom app text styles.
+  AppTextStyles get appTextStyles => Theme.of(this).extension<AppTextStyles>()!;
+
+  /// A global check for dark mode status.
+  bool get isDarkMode =>
+      Provider.of<ThemeNotifier>(this, listen: false).isDarkMode(this);
 }
 
 /// Centralized place for the application's theme data.
 class AppTheme {
   /// The main font family for the app.
   static const String _fontFamily = 'Inter';
-
-  static bool isDarkMode(BuildContext context) => Theme.of(context).brightness == Brightness.dark;
 
   /// Generates the light theme data for the application.
   static ThemeData light(Color seedColor) {
